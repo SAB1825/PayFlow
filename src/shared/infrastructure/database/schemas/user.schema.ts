@@ -1,5 +1,7 @@
+import { relations } from 'drizzle-orm';
 import { pgTable, uuid, varchar, timestamp } from 'drizzle-orm/pg-core';
 import { pgEnum } from 'drizzle-orm/pg-core';
+import { accountSchema } from './account.schema';
 
 export const role = pgEnum('role', ['ADMIN', 'USER', 'SUPPORT']);
 
@@ -19,3 +21,6 @@ export const users = pgTable('users', {
 
 export type UserDB = typeof users.$inferSelect;
 
+export const userRelations = relations(users, ({ many }) => ({
+  accounts: many(accountSchema),
+}));

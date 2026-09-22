@@ -10,9 +10,9 @@ export const refreshToken = pgTable('token_session', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   tokenHash: varchar('refresh_token_hash').notNull(),
-  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 });
 
 export type RefreshToken = typeof refreshToken.$inferSelect;
