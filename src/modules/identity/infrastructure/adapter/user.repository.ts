@@ -1,0 +1,88 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { UserRepositoryPort } from '../../application/ports/user-repository.port';
+import {
+  DRIZZLE_DB,
+  type DrizzleDatabase,
+} from '../../../../shared/infrastructure/database/drizzle.types';
+import { User, UserRole } from '../../domain/entities/user.entity';
+import {
+  UserDB,
+  users,
+} from '../../../../shared/infrastructure/database/schemas/user.schema';
+import { UserId } from '../../domain/value-object/user-id.vo';
+import { Email } from '../../domain/value-object/email.vo';
+import { PasswordHash } from '../../domain/value-object/passwordHash.vo';
+import { eq } from 'drizzle-orm';
+
+@Injectable()
+export class UserRepository implements UserRepositoryPort {
+  constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) {}
+
+  async register(user: User): Promise<void> {
+    const row = UserRepository.toPersistance(user);
+
+    await this.db
+      .insert(users)
+      .values(row)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          email: row.email,
+          name: row.name,
+          passwordHash: row.passwordHash,
+          role: row.role,
+          updatedAt: row.updatedAt,
+        },
+      });
+  }
+
+  async findById(userId: UserId): Promise<User | null> {
+    const row = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId.getValue()));
+
+    if (row.length === 0) {
+      return null;
+    }
+
+    return UserRepository.toDomain(row[0]);
+  }
+
+  async findByEmail(email: Email): Promise<User | null> {
+    const row = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.email, email.getValue()));
+
+    if (row.length === 0) {
+      return null;
+    }
+
+    return UserRepository.toDomain(row[0]);
+  }
+
+  static toPersistance(user: User): UserDB {
+    return {
+      id: user.id.getValue(),
+      name: user.name,
+      email: user.email.getValue(),
+      passwordHash: user.passwordHash.getValue(),
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  static toDomain(user: UserDB): User {
+    return User.reconstitute({
+      id: UserId.fromString(user.id),
+      email: new Email(user.email),
+      name: user.name,
+      passwordHash: PasswordHash.fromHash(user.passwordHash),
+      role: user.role as UserRole,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
+  }
+}

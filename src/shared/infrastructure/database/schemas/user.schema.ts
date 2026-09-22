@@ -17,4 +17,5 @@ export const users = pgTable('users', {
     .notNull(),
 });
 
-export type User = typeof users.$inferSelect;
+export type UserDB = typeof users.$inferSelect;
+
