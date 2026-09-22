@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DrizzleModule } from './shared/infrastructure/database/drizzle.module';
 import { UserModule } from './modules/identity/user.module';
 import { CqrsModule } from '@nestjs/cqrs';
 
+@Global()
 @Module({
   imports: [
     CqrsModule.forRoot(),

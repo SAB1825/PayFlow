@@ -1,4 +1,4 @@
-import { validateEach } from '@nestjs/common/utils/validate-each.util.js';
+import { DomainException } from '../../../../shared/domain/exception/domain.exception';
 
 export class Email {
   private readonly value: string;
@@ -8,8 +8,7 @@ export class Email {
     const normalizedEmail = Email.normalizeEmail(raw);
 
     if (!Email.valid(normalizedEmail)) {
-      //TODO: Implement Custom Domain ERror
-      throw new Error('Invalid Email');
+      throw new DomainException("Invalid Email");
     }
 
     this.value = normalizedEmail;

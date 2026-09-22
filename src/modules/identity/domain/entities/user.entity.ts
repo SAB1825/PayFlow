@@ -1,4 +1,4 @@
-import { AggregateRoot } from '@nestjs/cqrs';
+import { AggregateRoot } from '../../../../shared/domain/aggregate-root';
 import { Email } from '../value-object/email.vo';
 import { PasswordHash } from '../value-object/passwordHash.vo';
 import { UserId } from '../value-object/user-id.vo';

@@ -1,9 +1,8 @@
-import { User } from "../../domain/entities/user.entity";
-import { Email } from "../../domain/value-object/email.vo";
-import { UserId } from "../../domain/value-object/user-id.vo";
+import { User } from '../../domain/entities/user.entity';
+import { Email } from '../../domain/value-object/email.vo';
+import { UserId } from '../../domain/value-object/user-id.vo';
 
-
-export const USER_REPOSITORY = Symbol("USEUSER_REPOSITORY");
+export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
 
 export interface UserRepositoryPort {
     register(user: User): Promise<void>;

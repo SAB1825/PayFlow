@@ -10,8 +10,9 @@ export class UserResponseDto {
 
   static fromDomain(user: User): UserResponseDto {
     const dto = new UserResponseDto();
-    dto.email = user.email.getValue();
     dto.id = user.id.getValue();
+    dto.email = user.email.getValue();
+    dto.name = user.name;
     dto.role = user.role;
     dto.createdAt = user.createdAt.toISOString();
     dto.updatedAt = user.updatedAt.toISOString();

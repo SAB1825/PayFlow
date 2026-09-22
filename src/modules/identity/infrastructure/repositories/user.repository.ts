@@ -13,6 +13,7 @@ import { UserId } from '../../domain/value-object/user-id.vo';
 import { Email } from '../../domain/value-object/email.vo';
 import { PasswordHash } from '../../domain/value-object/passwordHash.vo';
 import { eq } from 'drizzle-orm';
+import { ApplicationException, ApplicationExceptionCode } from '../../../../shared/domain/exception/application.exception';
 
 @Injectable()
 export class UserRepository implements UserRepositoryPort {
@@ -21,19 +22,14 @@ export class UserRepository implements UserRepositoryPort {
   async register(user: User): Promise<void> {
     const row = UserRepository.toPersistance(user);
 
-    await this.db
-      .insert(users)
-      .values(row)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          email: row.email,
-          name: row.name,
-          passwordHash: row.passwordHash,
-          role: row.role,
-          updatedAt: row.updatedAt,
-        },
-      });
+    try {
+      await this.db.insert(users).values(row);
+    } catch (error) {
+      if (UserRepository.isUniqueViolation(error)) {
+        throw new ApplicationException("User Already exisits", ApplicationExceptionCode.CONFLICT);
+      }
+      throw error;
+    }
   }
 
   async findById(userId: UserId): Promise<User | null> {
@@ -84,5 +80,14 @@ export class UserRepository implements UserRepositoryPort {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     });
+  }
+
+  private static isUniqueViolation(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: string }).code === '23505'
+    );
   }
 }
