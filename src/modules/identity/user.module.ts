@@ -11,12 +11,14 @@ import { TOKEN_SERVICE } from './application/ports/token-service.port';
 import { TokenService } from './infrastructure/services/token.service';
 import { REFRESH_TOKEN_REPOSITORY } from './application/ports/refresh-token.port';
 import { RefreshTokenRepository } from './infrastructure/repositories/refresh-token.repository';
+import { QueryHandlers } from './application/queries';
 
 @Module({
   imports: [CqrsModule, JwtModule.register({})],
   controllers: [UserController],
   providers: [
     ...CommandHandlers,
+    ...QueryHandlers,
     {
       provide: PASSWORD_HASHER,
       useClass: Argon2PasswordHasher,

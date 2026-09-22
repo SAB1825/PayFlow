@@ -36,6 +36,10 @@ export class TokenService implements TokenServicePort {
     return argon2.hash(token);
   }
 
+  verifyToken(hash: string, token: string): Promise<boolean> {
+    return argon2.verify(hash, token);
+  }
+
   async verifyAccessToken(token: string): Promise<JwtPayload> {
     const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
       secret: this.configService.getOrThrow<string>('ACCESS_TOKEN_SECRET'),
