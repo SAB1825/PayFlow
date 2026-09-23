@@ -3,11 +3,7 @@ import {
   DRIZZLE_DB,
   type DrizzleDatabase,
 } from '../../../../shared/infrastructure/database/drizzle.types';
-import { refreshToken as refreshTokenTable } from '../../../../shared/infrastructure/database/schemas';
-import {
-  RefreshTokenRepositoryPort,
-  TokenFromDb,
-} from '../../application/ports/refresh-token.port';
+import { RefreshTokenRepositoryPort } from '../../application/ports/refresh-token.port';
 import { RefreshToken } from '../../domain/value-object/refresh-token.vo';
 import { UserId } from '../../domain/value-object/user-id.vo';
 import { eq } from 'drizzle-orm';
@@ -15,6 +11,7 @@ import {
   ApplicationException,
   ApplicationExceptionCode,
 } from '../../../../shared/domain/exception/application.exception';
+import { refreshTokens } from '../../../../shared/infrastructure/database/schemas';
 
 @Injectable()
 export class RefreshTokenRepository implements RefreshTokenRepositoryPort {
@@ -24,7 +21,7 @@ export class RefreshTokenRepository implements RefreshTokenRepositoryPort {
   ) {}
 
   async save(refreshToken: RefreshToken): Promise<void> {
-    await this.db.insert(refreshTokenTable).values({
+    await this.db.insert(refreshTokens).values({
       userId: refreshToken.userId.getValue(),
       tokenHash: refreshToken.tokenHash,
       expiresAt: refreshToken.expiresAt,
@@ -35,8 +32,8 @@ export class RefreshTokenRepository implements RefreshTokenRepositoryPort {
   async findToken(userId: UserId): Promise<RefreshToken | null> {
     const token = await this.db
       .select()
-      .from(refreshTokenTable)
-      .where(eq(refreshTokenTable.userId, userId.getValue()));
+      .from(refreshTokens)
+      .where(eq(refreshTokens.userId, userId.getValue()));
 
     if (token.length === 0) return null;
 
@@ -50,8 +47,8 @@ export class RefreshTokenRepository implements RefreshTokenRepositoryPort {
   async revokeToken(refreshToken: RefreshToken): Promise<void> {
     const token = await this.db
       .select()
-      .from(refreshTokenTable)
-      .where(eq(refreshTokenTable.tokenHash, refreshToken.tokenHash));
+      .from(refreshTokens)
+      .where(eq(refreshTokens.tokenHash, refreshToken.tokenHash));
     if (token.length === 0)
       throw new ApplicationException(
         'Token not found database',
@@ -65,13 +62,13 @@ export class RefreshTokenRepository implements RefreshTokenRepositoryPort {
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx
-        .update(refreshTokenTable)
+        .update(refreshTokens)
         .set({
           revokedAt: new Date(),
         })
-        .where(eq(refreshTokenTable.tokenHash, oldToken.tokenHash));
+        .where(eq(refreshTokens.tokenHash, oldToken.tokenHash));
 
-      await tx.insert(refreshTokenTable).values({
+      await tx.insert(refreshTokens).values({
         userId: refreshToken.userId.getValue(),
         tokenHash: refreshToken.tokenHash,
         expiresAt: refreshToken.expiresAt,
