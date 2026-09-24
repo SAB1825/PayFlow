@@ -36,5 +36,6 @@ import { QueryHandlers } from './application/queries';
       useClass: RefreshTokenRepository,
     },
   ],
+  exports: [USER_REPOSITORY],
 })
 export class UserModule {}

@@ -6,6 +6,7 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGaurd } from './shared/infrastructure/gaurds/auth.gaurd';
 import { JwtModule } from '@nestjs/jwt';
+import { AccountModule } from './modules/account/account.module';
 
 @Global()
 @Module({
@@ -15,6 +16,7 @@ import { JwtModule } from '@nestjs/jwt';
     ConfigModule.forRoot({ isGlobal: true }),
     DrizzleModule,
     UserModule,
+    AccountModule,
   ],
   providers: [
     {
