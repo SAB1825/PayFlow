@@ -1,4 +1,3 @@
-// modules/account/domain/value-object/account-number.vo.ts
 import { DomainException } from '../../../../shared/domain/exception/domain.exception';
 
 export class AccountNumber {
@@ -26,12 +25,12 @@ export class AccountNumber {
     }
   }
 
-  get value(): string {
+  getvalue(): string {
     return this._value;
   }
 
   equals(other: AccountNumber): boolean {
-    return this._value === other.value;
+    return this._value === other.getvalue();
   }
 
   toString(): string {
