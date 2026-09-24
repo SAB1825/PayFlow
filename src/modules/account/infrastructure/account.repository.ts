@@ -70,6 +70,18 @@ export class AccountRepository implements AccountRepositoryPort {
     return accs.map((account) => AccountRepository.toDomain(account));
   }
 
+  async findByNumber(accountNumber: AccountNumber): Promise<Account | null> {
+    const [acc] = await this.db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.accountNumber, accountNumber.getvalue()))
+      .limit(1);
+
+    if (!acc) return null;
+
+    return AccountRepository.toDomain(acc);
+  }
+
   async findByUserIdAndType(
     userId: UserId,
     accountType: AccountType,

@@ -6,7 +6,6 @@ import {
   HttpStatus,
   Post,
   Res,
-  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';

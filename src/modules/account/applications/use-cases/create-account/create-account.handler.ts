@@ -39,6 +39,16 @@ export class CreateAccountHandler implements ICommandHandler<
       );
     }
 
+    const exisitingAccount = await this.accountRepository.findByUserIdAndType(
+      userId,
+      command.accountType,
+    );
+    if (exisitingAccount)
+      throw new ApplicationException(
+        'User with the given account type already exists',
+        ApplicationExceptionCode.CONFLICT,
+      );
+
     const account = Account.create(userId, command.accountType, 'INR');
 
     await this.accountRepository.create(account);

@@ -5,12 +5,14 @@ import { CommandHandlers } from './applications/use-cases';
 import { CqrsModule } from '@nestjs/cqrs';
 import { AccountController } from './presentation/account.controller';
 import { UserModule } from '../identity/user.module';
+import { QueryHandlers } from './applications/queries';
 
 @Module({
   imports: [CqrsModule, UserModule],
   controllers: [AccountController],
   providers: [
     ...CommandHandlers,
+    ...QueryHandlers,
     {
       provide: ACCOUNT_REPOSITORY,
       useClass: AccountRepository,

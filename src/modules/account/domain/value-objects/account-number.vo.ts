@@ -16,6 +16,11 @@ export class AccountNumber {
     AccountNumber.validate(value);
     return new AccountNumber(value);
   }
+  static fromNumber(value: number): AccountNumber {
+    const v = String(value);
+    AccountNumber.validate(v);
+    return new AccountNumber(v);
+  }
 
   private static validate(value: string): void {
     if (!/^\d{20}$/.test(value)) {
