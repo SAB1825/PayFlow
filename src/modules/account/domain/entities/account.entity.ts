@@ -1,4 +1,5 @@
 import { AggregateRoot } from '../../../../shared/domain/aggregate-root';
+import { DomainException } from '../../../../shared/domain/exception/domain.exception';
 import { Money } from '../../../../shared/domain/money.vo';
 import { UserId } from '../../../identity/domain/value-object/user-id.vo';
 import { AccountId } from '../value-objects/account-id.vo';
@@ -76,6 +77,26 @@ export class Account extends AggregateRoot {
 
   static reconstitute(props: AccountProps): Account {
     return new Account(props);
+  }
+
+  withdraw(amount: Money): void {
+    if (this._balance.currency !== amount.currency) {
+      throw new DomainException('Currency mismatch');
+    }
+
+    if (!this._balance.isGreaterThanOrEqual(amount)) {
+      throw new DomainException("Low balance, can't withdraw at the moment");
+    }
+
+    this._balance = this._balance.subtract(amount);
+  }
+
+  deposit(amount: Money): void {
+    if (this._balance.currency !== amount.currency) {
+      throw new DomainException('Currency mismatch');
+    }
+
+    this._balance = this._balance.add(amount);
   }
 
   get id(): AccountId {

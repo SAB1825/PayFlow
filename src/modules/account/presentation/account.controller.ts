@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGaurd } from '../../../shared/infrastructure/gaurds/auth.gaurd';
 import { CurrentUser } from '../../../shared/infrastructure/decorators/current-user.decorator';
-import { UserDto } from './dtos/user.dto';
 import { CreateAccountDto } from './dtos/create-account.dto';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { CreateAccountCommand } from '../applications/use-cases/create-account/create-account.command';
@@ -9,6 +8,7 @@ import { AccountResponseDto } from './dtos/account-response.dto';
 import { GetMyAccountsQuery } from '../applications/queries/get-accounts/get-accounts.query';
 import { Account } from '../domain/entities/account.entity';
 import { GetAccountQuery } from '../applications/queries/get-account/get-account.query';
+import { UserDto } from '../../../shared/infrastructure/dto/user.dto';
 
 @Controller('account')
 export class AccountController {
