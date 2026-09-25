@@ -40,6 +40,10 @@ export class Money {
     return new Money(0, currency);
   }
 
+  isZero(): boolean {
+    return this._paise === 0;
+  }
+
   equals(other: Money): boolean {
     return this._paise === other.paise && this._currency === other.currency;
   }
