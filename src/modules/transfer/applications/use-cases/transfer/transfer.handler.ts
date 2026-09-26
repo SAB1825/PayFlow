@@ -68,5 +68,7 @@ export class TransferCommandHandler implements ICommandHandler<
     );
 
     const pendingTransaction = await this.transferRepo.create(transfer);
+
+    return pendingTransaction;
   }
 }
