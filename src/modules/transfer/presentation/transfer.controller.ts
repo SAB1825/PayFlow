@@ -1,4 +1,12 @@
-import { Body, Controller, Headers, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Post,
+  UseGuards,
+  Param,
+} from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { AuthGaurd } from '../../../shared/infrastructure/gaurds/auth.gaurd';
 import { TransferResponseDto } from './dtos/transfer-response.dto';
@@ -7,6 +15,7 @@ import { TransferDto } from './dtos/transfer.dto';
 import { UserDto } from '../../../shared/infrastructure/dto/user.dto';
 import { TransferCommand } from '../applications/use-cases/transfer/transfer.command';
 import { Transfer } from '../domain/entities/transfer.entity';
+import { GetByIdQuery } from '../applications/queries/get-by-id/get-by-id.query';
 
 @Controller('transfer')
 export class TransferController {
@@ -30,6 +39,19 @@ export class TransferController {
         key,
         dto.amount,
       ),
+    );
+
+    return TransferResponseDto.fromDomain(transfer);
+  }
+
+  @Get(':transferId')
+  @UseGuards(AuthGaurd)
+  async getById(
+    @CurrentUser() user: UserDto,
+    @Param('transferId') transferId: string,
+  ): Promise<TransferResponseDto> {
+    const transfer = await this.queryBus.execute<GetByIdQuery, Transfer>(
+      new GetByIdQuery(user.sub, transferId),
     );
 
     return TransferResponseDto.fromDomain(transfer);
