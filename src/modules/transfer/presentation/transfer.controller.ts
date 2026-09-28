@@ -6,6 +6,7 @@ import {
   Post,
   UseGuards,
   Param,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { AuthGaurd } from '../../../shared/infrastructure/gaurds/auth.gaurd';
@@ -16,6 +17,7 @@ import { UserDto } from '../../../shared/infrastructure/dto/user.dto';
 import { TransferCommand } from '../applications/use-cases/transfer/transfer.command';
 import { Transfer } from '../domain/entities/transfer.entity';
 import { GetByIdQuery } from '../applications/queries/get-by-id/get-by-id.query';
+import { GetByAccountQuery } from '../applications/queries/get-by-account/get-by-account.command';
 
 @Controller('transfer')
 export class TransferController {
@@ -43,12 +45,26 @@ export class TransferController {
 
     return TransferResponseDto.fromDomain(transfer);
   }
+  @Get('account/:accountId')
+  @UseGuards(AuthGaurd)
+  async getByAccId(
+    @CurrentUser() user: UserDto,
+    @Param('accountId', new ParseUUIDPipe()) accountId: string,
+  ): Promise<TransferResponseDto[]> {
+    const transfers = await this.queryBus.execute<
+      GetByAccountQuery,
+      Transfer[]
+    >(new GetByAccountQuery(user.sub, accountId));
 
+    return transfers.map((transfer) =>
+      TransferResponseDto.fromDomain(transfer),
+    );
+  }
   @Get(':transferId')
   @UseGuards(AuthGaurd)
   async getById(
     @CurrentUser() user: UserDto,
-    @Param('transferId') transferId: string,
+    @Param('transferId', new ParseUUIDPipe()) transferId: string,
   ): Promise<TransferResponseDto> {
     const transfer = await this.queryBus.execute<GetByIdQuery, Transfer>(
       new GetByIdQuery(user.sub, transferId),
