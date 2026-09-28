@@ -7,6 +7,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthGaurd } from './shared/infrastructure/gaurds/auth.gaurd';
 import { JwtModule } from '@nestjs/jwt';
 import { AccountModule } from './modules/account/account.module';
+import { TransferModule } from './modules/transfer/transfer.module';
 
 @Global()
 @Module({
@@ -17,6 +18,7 @@ import { AccountModule } from './modules/account/account.module';
     DrizzleModule,
     UserModule,
     AccountModule,
+    TransferModule,
   ],
   providers: [
     {

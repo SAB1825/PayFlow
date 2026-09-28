@@ -18,5 +18,6 @@ import { QueryHandlers } from './applications/queries';
       useClass: AccountRepository,
     },
   ],
+  exports: [ACCOUNT_REPOSITORY],
 })
 export class AccountModule {}

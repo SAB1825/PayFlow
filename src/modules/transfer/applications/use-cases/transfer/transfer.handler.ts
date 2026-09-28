@@ -17,6 +17,10 @@ import {
 } from '../../../../../shared/domain/exception/application.exception';
 import { Money } from '../../../../../shared/domain/money.vo';
 import { UserId } from '../../../../identity/domain/value-object/user-id.vo';
+import {
+  UNIT_OF_WORK,
+  type UnitOfWorkPort,
+} from '../../../../../shared/application/unit-of-work.port';
 
 @CommandHandler(TransferCommand)
 export class TransferCommandHandler implements ICommandHandler<
@@ -28,6 +32,8 @@ export class TransferCommandHandler implements ICommandHandler<
     private readonly accountRepo: AccountRepositoryPort,
     @Inject(TRANSFER_REPOSITORY)
     private readonly transferRepo: TransferRepositoryPort,
+    @Inject(UNIT_OF_WORK)
+    private readonly unitOfWork: UnitOfWorkPort,
   ) {}
 
   async execute(command: TransferCommand): Promise<Transfer> {
@@ -67,8 +73,61 @@ export class TransferCommandHandler implements ICommandHandler<
       command.idempotencyKey,
     );
 
-    const pendingTransaction = await this.transferRepo.create(transfer);
+    try {
+      await this.transferRepo.create(transfer);
+    } catch (err) {
+      if (
+        err instanceof ApplicationException &&
+        err.code === ApplicationExceptionCode.CONFLICT
+      ) {
+        const original = await this.transferRepo.findByIdempotencyKey(
+          command.idempotencyKey,
+        );
+        if (original) return this.returnIfOwner(original, initiatedBy);
+      }
+      throw err;
+    }
 
-    return pendingTransaction;
+    try {
+      await this.unitOfWork.runInTransaction(async (tx) => {
+        const locked = await this.accountRepo.lockForUpdate(
+          [fromAcc.id, toAcc.id],
+          tx,
+        );
+
+        const from = locked.find((a) => a.id.equals(fromAcc.id));
+        const to = locked.find((a) => a.id.equals(toAcc.id));
+
+        if (!from || !to) {
+          throw new ApplicationException(
+            'Account not found',
+            ApplicationExceptionCode.NOT_FOUND,
+          );
+        }
+
+        from.withdraw(amount);
+        to.deposit(amount);
+
+        await this.accountRepo.updateBalance(from, tx);
+        await this.accountRepo.updateBalance(to, tx);
+      });
+    } catch (err) {
+      // Transaction rolled back: balances untouched. Record the failure.
+      transfer.markFailed(err instanceof Error ? err.message : 'Unknown error');
+      await this.transferRepo.updateStatus(transfer);
+      throw err;
+    }
+
+    transfer.markSuccess();
+    return this.transferRepo.updateStatus(transfer);
+  }
+  private returnIfOwner(transfer: Transfer, userId: UserId): Transfer {
+    if (!transfer.initiatedBy.equals(userId)) {
+      throw new ApplicationException(
+        'Idempotency key already used',
+        ApplicationExceptionCode.CONFLICT,
+      );
+    }
+    return transfer;
   }
 }

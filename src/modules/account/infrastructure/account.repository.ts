@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 import { AccountRepositoryPort } from '../applications/ports/account-repository.port';
 
@@ -25,6 +25,7 @@ import { AccountNumber } from '../domain/value-objects/account-number.vo';
 import { UserId } from '../../identity/domain/value-object/user-id.vo';
 
 import { Money } from '../../../shared/domain/money.vo';
+import { TransactionHandle } from '../../../shared/application/unit-of-work.port';
 
 @Injectable()
 export class AccountRepository implements AccountRepositoryPort {
@@ -137,6 +138,41 @@ export class AccountRepository implements AccountRepositoryPort {
 
     await this.db
       .delete(accounts)
+      .where(eq(accounts.id, account.id.getValue()));
+  }
+
+  //This methods lock the table until the transaction is complete, so it will allows
+  //to avoid multiple updates at same time.
+  async lockForUpdate(
+    accIds: AccountId[],
+    tx: TransactionHandle,
+  ): Promise<Account[]> {
+    const executer = tx as unknown as DrizzleDatabase;
+
+    const rows = await executer
+      .select()
+      .from(accounts)
+      .where(
+        inArray(
+          accounts.id,
+          accIds.map((id) => id.getValue()),
+        ),
+      )
+      .orderBy(accounts.id)
+      .for('update');
+
+    return rows.map((row) => AccountRepository.toDomain(row));
+  }
+
+  async updateBalance(account: Account, tx: TransactionHandle): Promise<void> {
+    const executer = tx as unknown as DrizzleDatabase;
+
+    await executer
+      .update(accounts)
+      .set({
+        balance: account.balance.paise,
+        updatedAt: new Date(),
+      })
       .where(eq(accounts.id, account.id.getValue()));
   }
 

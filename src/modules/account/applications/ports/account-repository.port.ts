@@ -1,3 +1,4 @@
+import { TransactionHandle } from '../../../../shared/application/unit-of-work.port';
 import { UserId } from '../../../identity/domain/value-object/user-id.vo';
 import { Account, AccountType } from '../../domain/entities/account.entity';
 import { AccountId } from '../../domain/value-objects/account-id.vo';
@@ -15,4 +16,6 @@ export interface AccountRepositoryPort {
   ): Promise<Account | null>;
   changeStatus(account: Account): Promise<void>;
   deleteAccount(account: Account): Promise<void>;
+  lockForUpdate(accIds: AccountId[], tx: TransactionHandle): Promise<Account[]>;
+  updateBalance(account: Account, tx: TransactionHandle): Promise<void>;
 }

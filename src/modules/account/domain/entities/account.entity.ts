@@ -89,6 +89,7 @@ export class Account extends AggregateRoot {
     }
 
     this._balance = this._balance.subtract(amount);
+    this._updatedAt = new Date();
   }
 
   deposit(amount: Money): void {
@@ -97,6 +98,7 @@ export class Account extends AggregateRoot {
     }
 
     this._balance = this._balance.add(amount);
+    this._updatedAt = new Date();
   }
 
   get id(): AccountId {

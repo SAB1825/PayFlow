@@ -1,8 +1,7 @@
-export type TransactionHandler = unknown;
-export const UNIT_OF_WORK = Symbol('UNIT_OF_WORK');
+export type TransactionHandle = unknown;
 
 export interface UnitOfWorkPort {
-  executeTransaction<T>(
-    work: (tx: TransactionHandler) => Promise<T>,
-  ): Promise<T>;
+  runInTransaction<T>(work: (tx: TransactionHandle) => Promise<T>): Promise<T>;
 }
+
+export const UNIT_OF_WORK = Symbol('UNIT_OF_WORK');
