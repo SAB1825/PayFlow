@@ -17,4 +17,4 @@ import { QueryHandlers } from './applications/queries';
     { provide: TRANSFER_REPOSITORY, useClass: TransferRepository },
   ],
 })
-export class TransferModule {}
+export class TransferModule { }
