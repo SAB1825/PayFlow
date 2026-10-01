@@ -8,6 +8,7 @@ import { AuthGaurd } from './shared/infrastructure/gaurds/auth.gaurd';
 import { JwtModule } from '@nestjs/jwt';
 import { AccountModule } from './modules/account/account.module';
 import { TransferModule } from './modules/transfer/transfer.module';
+import { BeneficiaryModule } from './modules/beneficiary/beneficiary.module';
 
 @Global()
 @Module({
@@ -19,6 +20,7 @@ import { TransferModule } from './modules/transfer/transfer.module';
     UserModule,
     AccountModule,
     TransferModule,
+    BeneficiaryModule,
   ],
   providers: [
     {
@@ -27,4 +29,4 @@ import { TransferModule } from './modules/transfer/transfer.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
