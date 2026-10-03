@@ -23,7 +23,7 @@ import { desc, eq, or } from 'drizzle-orm';
 
 @Injectable()
 export class TransferRepository implements TransferRepositoryPort {
-  constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) {}
+  constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) { }
 
   async create(transfer: Transfer): Promise<Transfer> {
     try {
@@ -136,6 +136,7 @@ export class TransferRepository implements TransferRepositoryPort {
       toAccId: transfer.toAccountId.getValue(),
       amount: transfer.amount.paise,
       currency: transfer.amount.currency,
+      idempotencyKey: transfer.idempetencyKey,
       status: transfer.status,
       failureReason: transfer.failureReason,
       createdAt: transfer.createdAt,
