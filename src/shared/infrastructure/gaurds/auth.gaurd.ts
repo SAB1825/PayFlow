@@ -22,7 +22,7 @@ export class AuthGaurd implements CanActivate {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
-  ) {}
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride(IS_PUBLIC_KEY, [
@@ -47,11 +47,12 @@ export class AuthGaurd implements CanActivate {
         email: string;
       }>(token, {
         secret: this.configService.getOrThrow<string>('ACCESS_TOKEN_SECRET'),
+        algorithms: ["HS256"]
       });
 
       (request as AuthenticatedRequest).user = payload;
     } catch (error) {
-      throw new ApplicationException('Invalid or expired access token.');
+      throw new ApplicationException('Invalid or expired access token.', ApplicationExceptionCode.UNAUTHORIZED);
     }
 
     return true;

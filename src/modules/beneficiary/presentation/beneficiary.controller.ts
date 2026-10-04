@@ -19,7 +19,6 @@ export class BeneficiaryController {
   ) { }
 
   @Post()
-  @UseGuards(AuthGaurd)
   @HttpCode(HttpStatus.CREATED)
   async create(
     @Body() dto: CreateBeneficiaryDto,
@@ -35,7 +34,6 @@ export class BeneficiaryController {
   }
 
   @Get()
-  @UseGuards(AuthGaurd)
   @HttpCode(HttpStatus.OK)
   async listBeneficiaries(
     @CurrentUser() user: UserDto
@@ -49,7 +47,6 @@ export class BeneficiaryController {
   }
 
   @Delete(":id")
-  @UseGuards(AuthGaurd)
   @HttpCode(HttpStatus.OK)
   async remove(
     @CurrentUser() user: UserDto,

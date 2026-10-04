@@ -24,10 +24,9 @@ export class TransferController {
   constructor(
     private readonly queryBus: QueryBus,
     private readonly commandBus: CommandBus,
-  ) {}
+  ) { }
 
   @Post()
-  @UseGuards(AuthGaurd)
   async transfer(
     @CurrentUser() user: UserDto,
     @Headers('idempotency-key') key: string,
@@ -46,7 +45,6 @@ export class TransferController {
     return TransferResponseDto.fromDomain(transfer);
   }
   @Get('account/:accountId')
-  @UseGuards(AuthGaurd)
   async getByAccId(
     @CurrentUser() user: UserDto,
     @Param('accountId', new ParseUUIDPipe()) accountId: string,
@@ -61,7 +59,6 @@ export class TransferController {
     );
   }
   @Get(':transferId')
-  @UseGuards(AuthGaurd)
   async getById(
     @CurrentUser() user: UserDto,
     @Param('transferId', new ParseUUIDPipe()) transferId: string,

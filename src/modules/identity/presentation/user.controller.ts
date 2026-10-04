@@ -29,7 +29,7 @@ export class UserController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
-  ) {}
+  ) { }
 
   @Public()
   @Post('register')
@@ -98,7 +98,6 @@ export class UserController {
   }
 
   @Get('me')
-  @UseGuards(AuthGaurd)
   async getProfile(
     @CurrentUser() dto: GetProfileDto,
   ): Promise<UserResponseDto> {

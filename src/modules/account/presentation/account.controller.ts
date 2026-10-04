@@ -15,10 +15,9 @@ export class AccountController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
-  ) {}
+  ) { }
 
   @Post('create')
-  @UseGuards(AuthGaurd)
   async create(@CurrentUser() user: UserDto, @Body() dto: CreateAccountDto) {
     await this.commandBus.execute<CreateAccountCommand>(
       new CreateAccountCommand(dto.accountType, user.sub),
@@ -26,19 +25,16 @@ export class AccountController {
   }
 
   @Get()
-  @UseGuards(AuthGaurd)
   async getMyAccounts(
     @CurrentUser() user: UserDto,
   ): Promise<AccountResponseDto[]> {
     const accounts = await this.queryBus.execute<GetMyAccountsQuery, Account[]>(
       new GetMyAccountsQuery(user.sub),
     );
-
     return accounts.map((account) => AccountResponseDto.fromDomain(account));
   }
 
   @Get(':accountNumber')
-  @UseGuards(AuthGaurd)
   async getAccount(
     @CurrentUser() user: UserDto,
     @Param('accountNumber') accountNumber: string,
