@@ -4,32 +4,37 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Post,
+  Req,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { RegisterUserDto } from './dtos/register-user.dto';
 import { RegisterUserCommand } from '../application/use-cases/register-user/register-user.command';
 import { LoginUserDto } from './dtos/login-user.dto';
-import type { Response } from 'express';
+import type { Response, Request } from 'express';
 import { UserResponseDto } from './dtos/user-response.dto';
 import { LoginUserCommand } from '../application/use-cases/login-user/login-user.command';
 import { User } from '../domain/entities/user.entity';
 import { Public } from '../../../shared/infrastructure/decorators/public.decorator';
-import { AuthGaurd } from '../../../shared/infrastructure/gaurds/auth.gaurd';
 import { CurrentUser } from '../../../shared/infrastructure/decorators/current-user.decorator';
 import { GetProfileDto } from './dtos/get-profile.dto';
 import { GetProfileQuery } from '../application/queries/get-profile/get-profile.command';
 import { RefreshTokenCommand } from '../application/use-cases/refres-token/refresh-token.command';
 import { RefreshTokenDto } from './dtos/refresh-token.dto';
 import { Throttle } from '@nestjs/throttler';
+import { UserDto } from '../../../shared/infrastructure/dto/user.dto';
+import { TOKEN_SERVICE, type TokenServicePort } from '../application/ports/token-service.port';
+import { LogOutCommand } from '../application/use-cases/log-out/log-out.command';
+import { ApplicationException, ApplicationExceptionCode } from '../../../shared/domain/exception/application.exception';
 
 @Controller('auth')
 export class UserController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
+    @Inject(TOKEN_SERVICE) private readonly tokenService: TokenServicePort,
   ) { }
 
   @Public()
@@ -109,4 +114,25 @@ export class UserController {
 
     return UserResponseDto.fromDomain(user);
   }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logount(
+    @CurrentUser() user: UserDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<void> {
+    const rawToken = req.cookies['refresh_token'];
+    if (!rawToken) throw new ApplicationException("Token Not found", ApplicationExceptionCode.NOT_FOUND)
+    await this.commandBus.execute<LogOutCommand, void>(
+      new LogOutCommand(
+        rawToken,
+        user.sub
+      )
+    )
+    res.clearCookie('refresh_token', { httpOnly: true, secure: true, sameSite: 'lax' })
+  }
+
+
+
 }
