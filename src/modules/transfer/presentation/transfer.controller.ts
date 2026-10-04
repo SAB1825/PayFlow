@@ -4,12 +4,11 @@ import {
   Get,
   Headers,
   Post,
-  UseGuards,
   Param,
   ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { AuthGaurd } from '../../../shared/infrastructure/gaurds/auth.gaurd';
 import { TransferResponseDto } from './dtos/transfer-response.dto';
 import { CurrentUser } from '../../../shared/infrastructure/decorators/current-user.decorator';
 import { TransferDto } from './dtos/transfer.dto';
@@ -18,6 +17,8 @@ import { TransferCommand } from '../applications/use-cases/transfer/transfer.com
 import { Transfer } from '../domain/entities/transfer.entity';
 import { GetByIdQuery } from '../applications/queries/get-by-id/get-by-id.query';
 import { GetByAccountQuery } from '../applications/queries/get-by-account/get-by-account.command';
+import { Throttle } from '@nestjs/throttler';
+import { UserThrottlerGaurd } from '../../../shared/infrastructure/gaurds/throttler.gaurd';
 
 @Controller('transfer')
 export class TransferController {
@@ -27,6 +28,7 @@ export class TransferController {
   ) { }
 
   @Post()
+  @UseGuards(UserThrottlerGaurd)
   async transfer(
     @CurrentUser() user: UserDto,
     @Headers('idempotency-key') key: string,
@@ -44,7 +46,9 @@ export class TransferController {
 
     return TransferResponseDto.fromDomain(transfer);
   }
+
   @Get('account/:accountId')
+  @UseGuards(UserThrottlerGaurd)
   async getByAccId(
     @CurrentUser() user: UserDto,
     @Param('accountId', new ParseUUIDPipe()) accountId: string,

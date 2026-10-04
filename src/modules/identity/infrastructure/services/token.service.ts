@@ -43,7 +43,6 @@ export class TokenService implements TokenServicePort {
   async verifyAccessToken(token: string): Promise<JwtPayload> {
     const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
       secret: this.configService.getOrThrow<string>('ACCESS_TOKEN_SECRET'),
-      algorithms: ["HS256"]
     });
     return payload;
   }
@@ -51,7 +50,6 @@ export class TokenService implements TokenServicePort {
   async verifyRefreshToken(token: string): Promise<JwtPayload> {
     const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
       secret: this.configService.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
-      algorithms: ["HS256"]
     });
 
     return payload;

@@ -23,6 +23,7 @@ import { GetProfileDto } from './dtos/get-profile.dto';
 import { GetProfileQuery } from '../application/queries/get-profile/get-profile.command';
 import { RefreshTokenCommand } from '../application/use-cases/refres-token/refresh-token.command';
 import { RefreshTokenDto } from './dtos/refresh-token.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class UserController {
@@ -40,6 +41,7 @@ export class UserController {
     );
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)

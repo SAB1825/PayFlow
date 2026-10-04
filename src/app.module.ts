@@ -9,10 +9,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { AccountModule } from './modules/account/account.module';
 import { TransferModule } from './modules/transfer/transfer.module';
 import { BeneficiaryModule } from './modules/beneficiary/beneficiary.module';
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler"
 
 @Global()
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
     CqrsModule.forRoot(),
     JwtModule.register({ global: true }),
     ConfigModule.forRoot({ isGlobal: true }),
@@ -27,6 +29,10 @@ import { BeneficiaryModule } from './modules/beneficiary/beneficiary.module';
       provide: APP_GUARD,
       useClass: AuthGaurd,
     },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard
+    }
   ],
 })
 export class AppModule { }
