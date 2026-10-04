@@ -22,6 +22,20 @@
       "when": 1790777045573,
       "tag": "0002_bizarre_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791081308093,
+      "tag": "0003_legal_swarm",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791084658239,
+      "tag": "0004_refresh_token_family_idx",
+      "breakpoints": true
     }
   ]
 }

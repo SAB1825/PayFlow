@@ -20,7 +20,7 @@ import {
   ApplicationExceptionCode,
 } from '../../../../../shared/domain/exception/application.exception';
 import { UserId } from '../../../domain/value-object/user-id.vo';
-import { RefreshToken } from '../../../domain/value-object/refresh-token.vo';
+import { RefreshToken } from '../../../domain/entities/refresh-token.entity';
 
 export interface RefreshTokenResult {
   user: User;
@@ -40,15 +40,19 @@ export class RefreshTokenHandler implements ICommandHandler<
     private readonly refreshTokenRepo: RefreshTokenRepositoryPort,
     @Inject(TOKEN_SERVICE)
     private readonly tokenService: TokenServicePort,
-  ) {}
+  ) { }
 
   async execute(command: RefreshTokenCommand): Promise<RefreshTokenResult> {
     const payload = await this.verifySignature(command.refreshToken);
-    const user = await this.getUser(payload.sub);
-    const dbToken = await this.getActiveSession(user.id);
+    const dbToken = await this.getSessionByToken(command.refreshToken);
 
+    // A revoked token means the client replayed an already rotated token, so the
+    // whole family is compromised and must not be usable again.
+    await this.assertNotReused(dbToken);
+
+    const user = await this.getUser(payload.sub);
+    this.assertBelongsTo(dbToken, user);
     await this.assertNotExpired(dbToken);
-    await this.assertNotReused(dbToken, command.refreshToken);
 
     return this.rotate(user, dbToken);
   }
@@ -64,6 +68,18 @@ export class RefreshTokenHandler implements ICommandHandler<
     }
   }
 
+  private async getSessionByToken(rawToken: string): Promise<RefreshToken> {
+    const tokenHash = this.tokenService.hashToken(rawToken);
+    const dbToken = await this.refreshTokenRepo.findByTokenHash(tokenHash);
+    if (!dbToken) {
+      throw new ApplicationException(
+        'Invalid refresh token',
+        ApplicationExceptionCode.UNAUTHORIZED,
+      );
+    }
+    return dbToken;
+  }
+
   private async getUser(userId: string): Promise<User> {
     const user = await this.userRepository.findById(UserId.fromString(userId));
     if (!user) {
@@ -75,40 +91,34 @@ export class RefreshTokenHandler implements ICommandHandler<
     return user;
   }
 
-  private async getActiveSession(userId: UserId) {
-    const dbToken = await this.refreshTokenRepo.findToken(userId);
-    if (!dbToken) {
+  // The stored token row is the source of truth: it must belong to the subject
+  // the signed token claims.
+  private assertBelongsTo(dbToken: RefreshToken, user: User): void {
+    if (!dbToken.belongsTo(user.id)) {
       throw new ApplicationException(
-        'Invalid session or refresh token',
+        'Invalid refresh token',
         ApplicationExceptionCode.UNAUTHORIZED,
       );
     }
-    return dbToken;
+  }
+
+  private async assertNotReused(dbToken: RefreshToken): Promise<void> {
+    if (!dbToken.isRevoked()) return;
+
+    await this.refreshTokenRepo.revokeFamily(dbToken.familyId);
+    throw new ApplicationException(
+      'Refresh token reuse detected, please login again',
+      ApplicationExceptionCode.UNAUTHORIZED,
+    );
   }
 
   //Throw error if token is not expired
   private async assertNotExpired(dbToken: RefreshToken): Promise<void> {
-    if (dbToken.expiresAt < new Date()) {
-      await this.refreshTokenRepo.revokeToken(dbToken);
-      throw new ApplicationException(
-        'Session expired, please login again',
-        ApplicationExceptionCode.UNAUTHORIZED,
-      );
-    }
-  }
+    if (!dbToken.isExpired()) return;
 
-  private async assertNotReused(
-    dbToken: RefreshToken,
-    rawToken: string,
-  ): Promise<void> {
-    const isValidToken = await this.tokenService.verifyToken(
-      dbToken.tokenHash,
-      rawToken,
-    );
-    if (isValidToken) return;
-    await this.refreshTokenRepo.revokeToken(dbToken);
+    await this.refreshTokenRepo.revokeFamily(dbToken.familyId);
     throw new ApplicationException(
-      'Invalid refresh token',
+      'Session expired, please login again',
       ApplicationExceptionCode.UNAUTHORIZED,
     );
   }
@@ -125,13 +135,19 @@ export class RefreshTokenHandler implements ICommandHandler<
       sub: user.id.getValue(),
       email: user.email.getValue(),
     });
-    const tokenHash = await this.tokenService.hashToken(refreshToken);
+    const tokenHash = this.tokenService.hashToken(refreshToken);
     const expiresAt = this.tokenService.getRefreshTokenExpiresAt();
 
-    await this.refreshTokenRepo.replace(
-      oldToken,
-      RefreshToken.create(tokenHash, user.id, expiresAt),
+    // The new token stays in the same family so a later replay of any token in
+    // this chain still triggers family-wide revocation.
+    const rotatedToken = RefreshToken.create(
+      user.id,
+      oldToken.familyId,
+      tokenHash,
+      expiresAt,
     );
+
+    await this.refreshTokenRepo.replace(oldToken, rotatedToken);
 
     return { user, accessToken, refreshToken };
   }

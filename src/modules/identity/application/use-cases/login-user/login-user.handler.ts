@@ -19,7 +19,8 @@ import {
   type PasswordHasher,
 } from '../../ports/password-service';
 import { Email } from '../../../domain/value-object/email.vo';
-import { RefreshToken } from '../../../domain/value-object/refresh-token.vo';
+import { RefreshToken } from '../../../domain/entities/refresh-token.entity';
+import { TokenFamilyId } from '../../../domain/value-object/token-family-id.vo';
 import {
   ApplicationException,
   ApplicationExceptionCode,
@@ -43,7 +44,7 @@ export class LoginUserHandler implements ICommandHandler<
     @Inject(PASSWORD_HASHER) private readonly passwordHasher: PasswordHasher,
     @Inject(REFRESH_TOKEN_REPOSITORY)
     private readonly refreshTokenRepository: RefreshTokenRepositoryPort,
-  ) {}
+  ) { }
 
   async execute(command: LoginUserCommand): Promise<LoginResponse> {
     const user = await this.userRepository.findByEmail(
@@ -76,11 +77,12 @@ export class LoginUserHandler implements ICommandHandler<
       email: user.email.getValue(),
     });
 
-    const hashedToken = await this.tokenService.hashToken(refreshToken);
+    const hashedToken = this.tokenService.hashToken(refreshToken);
     await this.refreshTokenRepository.save(
       RefreshToken.create(
-        hashedToken,
         user.id,
+        TokenFamilyId.create(),
+        hashedToken,
         this.tokenService.getRefreshTokenExpiresAt(),
       ),
     );

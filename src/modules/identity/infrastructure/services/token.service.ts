@@ -3,7 +3,7 @@ import {
   JwtPayload,
   TokenServicePort,
 } from '../../application/ports/token-service.port';
-import * as argon2 from 'argon2';
+import *  as crypto from "node:crypto"
 import { ConfigService } from '@nestjs/config';
 import { Injectable } from '@nestjs/common';
 
@@ -15,29 +15,30 @@ export class TokenService implements TokenServicePort {
   ) { }
 
   async generateAccessToken(payload: JwtPayload): Promise<string> {
-    return await this.jwtService.signAsync(payload, {
-      secret: this.configService.getOrThrow<string>('ACCESS_TOKEN_SECRET'),
-      expiresIn: this.configService.getOrThrow<string>(
-        'ACCESS_TOKEN_EXPIRES_IN',
-      ) as JwtSignOptions['expiresIn'],
-    });
+    return await this.jwtService.signAsync(
+      { ...payload, jti: payload.jti ?? crypto.randomUUID() },
+      {
+        secret: this.configService.getOrThrow<string>('ACCESS_TOKEN_SECRET'),
+        expiresIn: this.configService.getOrThrow<string>(
+          'ACCESS_TOKEN_EXPIRES_IN',
+        ) as JwtSignOptions['expiresIn'],
+      },
+    );
   }
 
   async generateRefreshToken(payload: JwtPayload): Promise<string> {
-    return await this.jwtService.signAsync(payload, {
-      secret: this.configService.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
-      expiresIn: this.configService.getOrThrow<string>(
-        'REFRESH_TOKEN_EXPIRES_IN',
-      ) as JwtSignOptions['expiresIn'],
-    });
+    return await this.jwtService.signAsync(
+      { ...payload, jti: payload.jti ?? crypto.randomUUID() },
+      {
+        secret: this.configService.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
+        expiresIn: this.configService.getOrThrow<string>(
+          'REFRESH_TOKEN_EXPIRES_IN',
+        ) as JwtSignOptions['expiresIn'],
+      },
+    );
   }
-
-  hashToken(token: string): Promise<string> {
-    return argon2.hash(token);
-  }
-
-  verifyToken(hash: string, token: string): Promise<boolean> {
-    return argon2.verify(hash, token);
+  hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex')
   }
 
   async verifyAccessToken(token: string): Promise<JwtPayload> {
