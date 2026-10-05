@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { RegisterUserDto } from './dtos/register-user.dto';
@@ -25,16 +26,15 @@ import { RefreshTokenCommand } from '../application/use-cases/refres-token/refre
 import { RefreshTokenDto } from './dtos/refresh-token.dto';
 import { Throttle } from '@nestjs/throttler';
 import { UserDto } from '../../../shared/infrastructure/dto/user.dto';
-import { TOKEN_SERVICE, type TokenServicePort } from '../application/ports/token-service.port';
 import { LogOutCommand } from '../application/use-cases/log-out/log-out.command';
 import { ApplicationException, ApplicationExceptionCode } from '../../../shared/domain/exception/application.exception';
+import { CsrfGaurd } from '../../../shared/infrastructure/gaurds/csrf.gaurd';
 
 @Controller('auth')
 export class UserController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
-    @Inject(TOKEN_SERVICE) private readonly tokenService: TokenServicePort,
   ) { }
 
   @Public()
@@ -68,6 +68,12 @@ export class UserController {
       sameSite: 'strict',
     });
 
+    res.cookie('csrf_token', crypto.randomUUID(), {
+      httpOnly: false,
+      secure: true,
+      sameSite: 'lax'
+    })
+
     return {
       user: UserResponseDto.fromDomain(response.user),
       accessToken: response.accessToken,
@@ -76,6 +82,7 @@ export class UserController {
 
   @Public()
   @Post('refresh')
+  @UseGuards(CsrfGaurd)
   async refreshToken(
     @Body() dto: RefreshTokenDto,
     @Res({ passthrough: true }) res: Response,
@@ -116,6 +123,7 @@ export class UserController {
   }
 
   @Post('logout')
+  @UseGuards(CsrfGaurd)
   @HttpCode(HttpStatus.OK)
   async logount(
     @CurrentUser() user: UserDto,
