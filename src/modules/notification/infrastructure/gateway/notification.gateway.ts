@@ -35,8 +35,6 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
         throw new Error('Invalid access token payload');
       }
 
-      // Every notification is addressed to the room named after the user id,
-      // so joining it is what scopes this socket to a single user.
       client.data.userId = payload.sub;
       client.join(payload.sub);
     } catch {
@@ -46,12 +44,9 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
   }
 
   handleDisconnect(_client: Socket) {
-    // socket.io auto-leaves rooms on disconnect — nothing to clean up manually
   }
 
   notifyUser(userId: string, event: string, payload: unknown): void {
-    // `server` is only assigned once the gateway is ready; a transfer that
-    // completes during startup must not crash the event handler.
     if (!this.server) return;
     this.server.to(userId).emit(event, payload);
   }

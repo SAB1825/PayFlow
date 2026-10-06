@@ -1,6 +1,8 @@
 import { AggregateRoot } from "../../../../shared/domain/aggregate-root";
 import { UserId } from "../../../identity/domain/value-object/user-id.vo";
 import { NotificationId } from "../value-object/notification-id.vo";
+import { NotificationCreatedEvent } from "../events/notification-created.event";
+import { NotificationReadEvent } from "../events/notification-read.event";
 
 export enum NotificationType {
   TransferReceived = 'TRANSFER_RECEIVED',
@@ -39,7 +41,7 @@ export class Notification extends AggregateRoot {
   }
 
   static create(userId: UserId, type: NotificationType, title: string, message: string): Notification {
-    return new Notification({
+    const notification = new Notification({
       id: NotificationId.create(),
       userId,
       type,
@@ -48,6 +50,9 @@ export class Notification extends AggregateRoot {
       isRead: false,
       createdAt: new Date(),
     });
+
+    notification.addDomainEvent(new NotificationCreatedEvent(notification));
+    return notification;
   }
 
   static reconstitute(props: NotificationProps): Notification {
@@ -55,7 +60,10 @@ export class Notification extends AggregateRoot {
   }
 
   markRead(): void {
+    if (this._isRead) return;
+
     this._isRead = true;
+    this.addDomainEvent(new NotificationReadEvent(this));
   }
 
   get id() { return this._id; }

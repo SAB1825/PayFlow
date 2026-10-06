@@ -1,4 +1,4 @@
-import { CommandHandler, ICommandHandler } from "@nestjs/cqrs";
+import { CommandHandler, EventBus, ICommandHandler } from "@nestjs/cqrs";
 import { Inject } from "@nestjs/common";
 import { MarkNotificationReadCommand } from "./mark-notification-read.command";
 import { NOTIFICATION_REPOSITORY, type NotificationRepositoryPort } from "../../ports/notification.port";
@@ -14,6 +14,7 @@ export class MarkNotificationReadHandler implements ICommandHandler<
   constructor(
     @Inject(NOTIFICATION_REPOSITORY)
     private readonly notificationRepo: NotificationRepositoryPort,
+    private readonly eventBus: EventBus,
   ) { }
 
   async execute(command: MarkNotificationReadCommand): Promise<void> {
@@ -31,7 +32,14 @@ export class MarkNotificationReadHandler implements ICommandHandler<
 
     if (notification.isRead) return;
 
+    // markRead() records a NotificationReadEvent on the aggregate; it goes on
+    // the CQRS bus only after the update landed, so no socket is told about a
+    // read the database rejected.
     notification.markRead();
     await this.notificationRepo.markRead(notification.id);
+
+    for (const event of notification.pullDomainEvents()) {
+      this.eventBus.publish(event);
+    }
   }
 }

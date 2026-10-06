@@ -4,8 +4,6 @@ import {
   ICommandHandler,
 } from '@nestjs/cqrs';
 import { TransferCommand } from './transfer.command';
-import { TransferCompletedEvent } from '../../../domain/events/transfer-completed.event';
-import { TransferFailedEvent } from '../../../domain/events/transfer-failed.event';
 import { Transfer } from '../../../domain/entities/transfer.entity';
 import { Inject } from '@nestjs/common';
 import {
@@ -122,32 +120,29 @@ export class TransferCommandHandler implements ICommandHandler<
       // Transaction rolled back: balances untouched. Record the failure.
       transfer.markFailed(err instanceof Error ? err.message : 'Unknown error');
       await this.transferRepo.updateStatus(transfer);
-      this.eventBus.publish(
-        new TransferFailedEvent(
-          transfer.id,
-          transfer.fromAccountId,
-          transfer.toAccountId,
-          transfer.amount,
-          transfer.failureReason ?? 'Unknown error',
-        ),
-      );
+      this.publishDomainEvents(transfer);
       throw err;
     }
 
     transfer.markSuccess();
     const completed = await this.transferRepo.updateStatus(transfer);
-
-    this.eventBus.publish(
-      new TransferCompletedEvent(
-        completed.id,
-        completed.fromAccountId,
-        completed.toAccountId,
-        completed.amount,
-      ),
-    );
+    this.publishDomainEvents(transfer);
 
     return completed;
   }
+
+  /**
+   * The aggregate recorded its domain events when the state changed
+   * (markSuccess/markFailed); they are only put on the CQRS bus once the
+   * new status is safely persisted, so consumers never see an event for a
+   * transfer the DB rolled back.
+   */
+  private publishDomainEvents(transfer: Transfer): void {
+    for (const event of transfer.pullDomainEvents()) {
+      this.eventBus.publish(event);
+    }
+  }
+
   private returnIfOwner(transfer: Transfer, userId: UserId): Transfer {
     if (!transfer.initiatedBy.equals(userId)) {
       throw new ApplicationException(

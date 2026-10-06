@@ -4,6 +4,8 @@ import { Money } from '../../../../shared/domain/money.vo';
 import { AccountId } from '../../../account/domain/value-objects/account-id.vo';
 import { UserId } from '../../../identity/domain/value-object/user-id.vo';
 import { TransferId } from '../value-objects/transfer-id.vo';
+import { TransferCompletedEvent } from '../events/transfer-completed.event';
+import { TransferFailedEvent } from '../events/transfer-failed.event';
 
 export enum TransferStatus {
   Pending = 'PENDING',
@@ -91,6 +93,10 @@ export class Transfer extends AggregateRoot {
     }
     this._status = TransferStatus.Success;
     this._updatedAt = new Date();
+
+    this.addDomainEvent(
+      new TransferCompletedEvent(this._id, this._fromAccId, this._toAccId, this._ammount),
+    );
   }
 
   markFailed(reason: string): void {
@@ -102,6 +108,10 @@ export class Transfer extends AggregateRoot {
     this._status = TransferStatus.Failed;
     this._failureReason = reason;
     this._updatedAt = new Date();
+
+    this.addDomainEvent(
+      new TransferFailedEvent(this._id, this._fromAccId, this._toAccId, this._ammount, reason),
+    );
   }
 
   get id(): TransferId {
