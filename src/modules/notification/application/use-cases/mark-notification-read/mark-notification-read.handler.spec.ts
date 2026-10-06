@@ -34,6 +34,9 @@ describe('MarkNotificationReadHandler', () => {
       'Transfer sent',
       '₹100 sent',
     );
+    // In production the emitter drains the created-event right after persisting;
+    // drop it here so this spec only exercises the read event.
+    notification.pullDomainEvents();
     if (isRead) notification.markRead();
     return notification;
   }

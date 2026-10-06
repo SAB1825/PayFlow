@@ -1,6 +1,5 @@
 import { Notification, NotificationType } from './notification.entity';
 import { NotificationCreatedEvent } from '../events/notification-created.event';
-import { NotificationReadEvent } from '../events/notification-read.event';
 import { UserId } from '../../../identity/domain/value-object/user-id.vo';
 
 describe('Notification aggregate domain events', () => {

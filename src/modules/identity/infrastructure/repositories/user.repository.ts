@@ -14,6 +14,7 @@ import { Email } from '../../domain/value-object/email.vo';
 import { PasswordHash } from '../../domain/value-object/passwordHash.vo';
 import { eq } from 'drizzle-orm';
 import { ApplicationException, ApplicationExceptionCode } from '../../../../shared/domain/exception/application.exception';
+import { isUniqueViolation } from '../../../../shared/infrastructure/database/errors/unique-violation.error';
 
 @Injectable()
 export class UserRepository implements UserRepositoryPort {
@@ -25,7 +26,7 @@ export class UserRepository implements UserRepositoryPort {
     try {
       await this.db.insert(users).values(row);
     } catch (error) {
-      if (UserRepository.isUniqueViolation(error)) {
+      if (isUniqueViolation(error)) {
         throw new ApplicationException("User Already exisits", ApplicationExceptionCode.CONFLICT);
       }
       throw error;
@@ -80,14 +81,5 @@ export class UserRepository implements UserRepositoryPort {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     });
-  }
-
-  private static isUniqueViolation(error: unknown): boolean {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      (error as { code?: string }).code === '23505'
-    );
   }
 }
