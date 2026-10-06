@@ -1,5 +1,11 @@
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import {
+  CommandHandler,
+  EventBus,
+  ICommandHandler,
+} from '@nestjs/cqrs';
 import { TransferCommand } from './transfer.command';
+import { TransferCompletedEvent } from '../../../domain/events/transfer-completed.event';
+import { TransferFailedEvent } from '../../../domain/events/transfer-failed.event';
 import { Transfer } from '../../../domain/entities/transfer.entity';
 import { Inject } from '@nestjs/common';
 import {
@@ -34,6 +40,7 @@ export class TransferCommandHandler implements ICommandHandler<
     private readonly transferRepo: TransferRepositoryPort,
     @Inject(UNIT_OF_WORK)
     private readonly unitOfWork: UnitOfWorkPort,
+    private readonly eventBus: EventBus,
   ) {}
 
   async execute(command: TransferCommand): Promise<Transfer> {
@@ -115,11 +122,31 @@ export class TransferCommandHandler implements ICommandHandler<
       // Transaction rolled back: balances untouched. Record the failure.
       transfer.markFailed(err instanceof Error ? err.message : 'Unknown error');
       await this.transferRepo.updateStatus(transfer);
+      this.eventBus.publish(
+        new TransferFailedEvent(
+          transfer.id,
+          transfer.fromAccountId,
+          transfer.toAccountId,
+          transfer.amount,
+          transfer.failureReason ?? 'Unknown error',
+        ),
+      );
       throw err;
     }
 
     transfer.markSuccess();
-    return this.transferRepo.updateStatus(transfer);
+    const completed = await this.transferRepo.updateStatus(transfer);
+
+    this.eventBus.publish(
+      new TransferCompletedEvent(
+        completed.id,
+        completed.fromAccountId,
+        completed.toAccountId,
+        completed.amount,
+      ),
+    );
+
+    return completed;
   }
   private returnIfOwner(transfer: Transfer, userId: UserId): Transfer {
     if (!transfer.initiatedBy.equals(userId)) {

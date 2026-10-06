@@ -125,7 +125,7 @@ export class Transfer extends AggregateRoot {
   get failureReason(): string | null {
     return this._failureReason;
   }
-  get idempetencyKey(): string | null {
+  get idempotencyKey(): string | null {
     return this._idempotencyKey;
   }
   get createdAt(): Date {

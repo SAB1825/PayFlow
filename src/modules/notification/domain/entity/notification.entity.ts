@@ -1,4 +1,4 @@
-import { AggregateRoot } from "@nestjs/cqrs";
+import { AggregateRoot } from "../../../../shared/domain/aggregate-root";
 import { UserId } from "../../../identity/domain/value-object/user-id.vo";
 import { NotificationId } from "../value-object/notification-id.vo";
 
@@ -48,6 +48,10 @@ export class Notification extends AggregateRoot {
       isRead: false,
       createdAt: new Date(),
     });
+  }
+
+  static reconstitute(props: NotificationProps): Notification {
+    return new Notification(props);
   }
 
   markRead(): void {

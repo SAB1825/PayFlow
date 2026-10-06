@@ -9,6 +9,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AccountModule } from './modules/account/account.module';
 import { TransferModule } from './modules/transfer/transfer.module';
 import { BeneficiaryModule } from './modules/beneficiary/beneficiary.module';
+import { NotificationModule } from './modules/notification/notification.module';
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler"
 
 @Global()
@@ -23,6 +24,7 @@ import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler"
     AccountModule,
     TransferModule,
     BeneficiaryModule,
+    NotificationModule,
   ],
   providers: [
     {

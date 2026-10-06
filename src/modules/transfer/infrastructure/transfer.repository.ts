@@ -136,7 +136,7 @@ export class TransferRepository implements TransferRepositoryPort {
       toAccId: transfer.toAccountId.getValue(),
       amount: transfer.amount.paise,
       currency: transfer.amount.currency,
-      idempotencyKey: transfer.idempetencyKey,
+      idempotencyKey: transfer.idempotencyKey,
       status: transfer.status,
       failureReason: transfer.failureReason,
       createdAt: transfer.createdAt,

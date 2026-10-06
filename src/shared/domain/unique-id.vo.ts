@@ -1,4 +1,3 @@
-
 import { randomUUID } from 'node:crypto';
 
 export class UniqueId {
@@ -8,12 +7,18 @@ export class UniqueId {
     this.value = value;
   }
 
-  static create(): UniqueId {
-    return new UniqueId(randomUUID());
+  // Both factories are polymorphic: `UserId.fromString(...)` must yield a
+  // `UserId`, not a bare `UniqueId`. Hardcoding `new UniqueId(...)` here made
+  // every subclass silently degrade to the base type at runtime.
+  static create<T extends UniqueId>(this: new (value: string) => T): T {
+    return new this(randomUUID());
   }
 
-  static fromString(value: string): UniqueId {
-    return new UniqueId(value);
+  static fromString<T extends UniqueId>(
+    this: new (value: string) => T,
+    value: string,
+  ): T {
+    return new this(value);
   }
 
   getValue(): string {
