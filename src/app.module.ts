@@ -10,6 +10,7 @@ import { AccountModule } from './modules/account/account.module';
 import { TransferModule } from './modules/transfer/transfer.module';
 import { BeneficiaryModule } from './modules/beneficiary/beneficiary.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { HealthModule } from './modules/health/health.module';
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler"
 import { LoggingModule } from './shared/infrastructure/logging/logging.module';
 import { HttpLoggerMiddleware } from './shared/infrastructure/logging/http-logger.middleware';
@@ -28,6 +29,7 @@ import { HttpLoggerMiddleware } from './shared/infrastructure/logging/http-logge
     TransferModule,
     BeneficiaryModule,
     NotificationModule,
+    HealthModule,
   ],
   providers: [
     {

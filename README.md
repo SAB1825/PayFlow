@@ -105,6 +105,49 @@ constructor(private readonly logger: AppLogger) {}
 this.logger.child(TransferService.name).warn('retrying');
 ```
 
+### Health checks
+
+The app exposes probe endpoints (`src/modules/health/`) for orchestrators,
+load balancers and uptime monitors:
+
+| Endpoint       | Purpose      | Response                                        |
+| -------------- | ------------ | ----------------------------------------------- |
+| `GET /health/live`  | Liveness     | `200` while the process serves HTTP             |
+| `GET /health/ready` | Readiness    | `200` when every dependency is up, `503` if any check fails |
+| `GET /health`       | Alias        | Same as `/health/ready`                         |
+
+- The endpoints are public (`@Public()`) and exempt from rate limiting
+  (`@SkipThrottle()`), so probe traffic can never receive `401`/`429`.
+- Readiness runs all registered checks in parallel with a 2 s timeout each
+  and reports per-check timing:
+
+  ```json
+  {
+    "status": "error",
+    "timestamp": "2026-10-08T12:00:00.000Z",
+    "checks": [
+      { "name": "postgres", "status": "down", "responseTimeMs": 2001, "error": "postgres timed out after 2000ms" }
+    ]
+  }
+  ```
+
+- Checks are contributed through the `HEALTH_CHECKS` factory provider, so
+  new dependencies (queues, caches, ...) plug into `HealthModule` without
+  touching the controller:
+
+  ```ts
+  {
+    provide: HEALTH_CHECKS,
+    useFactory: (postgres: PostgresHealthCheck, queue: QueueHealthCheck): HealthCheck[] => [postgres, queue],
+    inject: [PostgresHealthCheck, QueueHealthCheck],
+  }
+  ```
+
+- The bundled Postgres check issues `select 1` through the shared Drizzle
+  pool. Local infra is equally probeable: `docker-compose.yaml` defines a
+  `pg_isready` healthcheck, so `pnpm infra:up` (which passes `--wait`)
+  blocks until Postgres reports healthy.
+
 [NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
 
 - **Distributed tracing:** Follow requests across services and understand how they flow through your system.
