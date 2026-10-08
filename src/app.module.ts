@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DrizzleModule } from './shared/infrastructure/database/drizzle.module';
 import { UserModule } from './modules/identity/user.module';
@@ -11,10 +11,13 @@ import { TransferModule } from './modules/transfer/transfer.module';
 import { BeneficiaryModule } from './modules/beneficiary/beneficiary.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler"
+import { LoggingModule } from './shared/infrastructure/logging/logging.module';
+import { HttpLoggerMiddleware } from './shared/infrastructure/logging/http-logger.middleware';
 
 @Global()
 @Module({
   imports: [
+    LoggingModule,
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
     CqrsModule.forRoot(),
     JwtModule.register({ global: true }),
@@ -37,4 +40,10 @@ import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler"
     }
   ],
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(HttpLoggerMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

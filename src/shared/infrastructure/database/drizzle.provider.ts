@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { ConfigService } from '@nestjs/config';
 import * as schema from './schemas';
+import { attachSqlLogging } from '../logging/sql-logger';
 
 export const DrizzleDbProvider: Provider = {
   provide: DRIZZLE_DB,
@@ -13,6 +14,7 @@ export const DrizzleDbProvider: Provider = {
     const pool = new Pool({
       connectionString,
     });
+    attachSqlLogging(pool);
     return drizzle(pool, { schema });
   },
 };

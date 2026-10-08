@@ -74,6 +74,37 @@ With Mau, you can deploy your application in just a few clicks, allowing you to 
 
 In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
 
+### Logging
+
+The app ships with a zero-dependency structured logging system built around `AppLogger`
+(`src/shared/infrastructure/logging/`):
+
+- **Formats** — colorized text during development, one JSON object per line in production
+  (`NODE_ENV=production`), controlled by `LOG_FORMAT`.
+- **Levels** — `LOG_LEVEL` (`silent` / `error` / `warn` / `log` / `debug` / `verbose`).
+- **HTTP request logging** — every request logs method, path, status, duration and IP;
+  responses get an `x-request-id` correlation header (an incoming well-formed
+  `x-request-id` is honored), and that id is attached to all logs emitted while
+  handling the request, including SQL queries.
+- **Error logging** — domain/application exceptions are logged by their filters; everything
+  else falls through to a catch-all filter that logs the stack and returns a generic 500.
+- **SQL logging** — opt in with `LOG_SQL=true`; queries slower than `SLOW_QUERY_MS`
+  (default 200 ms) are logged as warnings. `LOG_SQL_PARAMS=true` adds query parameters
+  (development only — values may be sensitive).
+- **Sensitive values** are masked automatically (`password`, `token`, `secret`, …).
+- **Lifecycle** — boot, shutdown initiation and completion are logged;
+  `app.enableShutdownHooks()` ensures clean shutdown on SIGTERM/SIGINT.
+
+```ts
+// per-class context
+private readonly logger = new AppLogger(TransferService.name);
+this.logger.log('transfer completed', { transferId, amount });
+
+// or via injection
+constructor(private readonly logger: AppLogger) {}
+this.logger.child(TransferService.name).warn('retrying');
+```
+
 [NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
 
 - **Distributed tracing:** Follow requests across services and understand how they flow through your system.
