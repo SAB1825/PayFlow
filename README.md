@@ -1,188 +1,232 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# PayFlow
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A payment platform API built with NestJS — user accounts, money transfers between accounts, beneficiaries, and real-time notifications over WebSockets.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- **Authentication** — register / login / refresh / logout with JWT access tokens and rotating refresh tokens stored in `httpOnly` cookies, protected by a CSRF guard (argon2 password hashing).
+- **Accounts** — savings and current accounts with balances.
+- **Transfers** — move money between accounts, idempotent via an `Idempotency-Key` header and rate-limited per user.
+- **Beneficiaries** — save frequently used account numbers with nicknames.
+- **Notifications** — persisted in the database and pushed instantly over Socket.IO.
+- **Health checks** — liveness and readiness probes for orchestrators.
+- **Structured logging** — JSON/text formats, request correlation ids, optional SQL logging.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Tech stack
 
-## Project setup
+| Layer     | Choice                                   |
+| --------- | ---------------------------------------- |
+| Framework | [NestJS](https://nestjs.com) 12 (CQRS)   |
+| Language  | TypeScript 6                             |
+| Database  | PostgreSQL 16 + Drizzle ORM              |
+| Realtime  | Socket.IO                                |
+| Testing   | Jest + Supertest                         |
+| Linting   | oxlint + Prettier                        |
+| Runtime   | Node.js 20+                              |
 
-```bash
-$ pnpm install
-```
+## Getting started
 
-## Compile and run the project
+### Prerequisites
 
-```bash
-# development
-$ pnpm run start
+- Node.js 20+ and [pnpm](https://pnpm.io)
+- Docker (for the local Postgres)
 
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
-```
-
-## Run tests
+### 1. Install dependencies
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm install
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 2. Configure the environment
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+cp .env.example .env
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+| Variable                 | Purpose                              |
+| ------------------------ | ------------------------------------ |
+| `DATABASE_URL`           | Postgres connection string           |
+| `ACCESS_TOKEN_SECRET`    | JWT signing secret for access tokens |
+| `ACCESS_TOKEN_EXPIRES_IN`| Access token lifetime (e.g. `15m`)   |
+| `REFRESH_TOKEN_SECRET`   | JWT signing secret for refresh tokens|
+| `REFRESH_TOKEN_EXPIRES_IN`| Refresh token lifetime (e.g. `7d`)  |
+| `LOG_LEVEL`              | `silent` … `verbose`                 |
+| `LOG_FORMAT`             | `auto` / `json` / `pretty`           |
+| `LOG_HTTP` / `LOG_SQL`   | Request / query logging              |
 
-## Observability
+`PORT` is optional and defaults to `3000`.
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+### 3. Start PostgreSQL
 
-### Logging
+```bash
+pnpm infra:up      # docker compose up -d --wait (waits until healthy)
+```
 
-The app ships with a zero-dependency structured logging system built around `AppLogger`
-(`src/shared/infrastructure/logging/`):
+### 4. Apply database migrations
 
-- **Formats** — colorized text during development, one JSON object per line in production
-  (`NODE_ENV=production`), controlled by `LOG_FORMAT`.
-- **Levels** — `LOG_LEVEL` (`silent` / `error` / `warn` / `log` / `debug` / `verbose`).
-- **HTTP request logging** — every request logs method, path, status, duration and IP;
-  responses get an `x-request-id` correlation header (an incoming well-formed
-  `x-request-id` is honored), and that id is attached to all logs emitted while
-  handling the request, including SQL queries.
-- **Error logging** — domain/application exceptions are logged by their filters; everything
-  else falls through to a catch-all filter that logs the stack and returns a generic 500.
-- **SQL logging** — opt in with `LOG_SQL=true`; queries slower than `SLOW_QUERY_MS`
-  (default 200 ms) are logged as warnings. `LOG_SQL_PARAMS=true` adds query parameters
-  (development only — values may be sensitive).
-- **Sensitive values** are masked automatically (`password`, `token`, `secret`, …).
-- **Lifecycle** — boot, shutdown initiation and completion are logged;
-  `app.enableShutdownHooks()` ensures clean shutdown on SIGTERM/SIGINT.
+```bash
+pnpm drizzle-kit migrate    # apply committed migrations in ./drizzle
+pnpm drizzle-kit generate   # generate new migrations after schema changes
+```
+
+### 5. Run the app
+
+```bash
+pnpm start:dev     # watch mode
+pnpm start         # build + run once
+pnpm start:prod    # run the built output (after pnpm build)
+```
+
+The API is available at `http://localhost:3000`.
+
+## Scripts
+
+| Command           | Description                    |
+| ----------------- | ------------------------------ |
+| `pnpm start:dev`  | Start in watch mode            |
+| `pnpm build`      | Compile to `dist/`             |
+| `pnpm start:prod` | Run the production build       |
+| `pnpm test`       | Unit tests                     |
+| `pnpm test:e2e`   | End-to-end tests               |
+| `pnpm test:cov`   | Unit tests with coverage       |
+| `pnpm lint`       | Lint (oxlint)                  |
+| `pnpm format`     | Format (prettier)              |
+| `pnpm infra:up`   | Start local Postgres           |
+| `pnpm infra:down` | Stop local Postgres            |
+| `pnpm infra:reset`| Recreate local Postgres        |
+
+## API
+
+Base URL: `http://localhost:3000`
+
+All endpoints require `Authorization: Bearer <access_token>` except the ones marked **public**.
+
+### Auth (public)
+
+| Method | Endpoint        | Description                        |
+| ------ | --------------- | ---------------------------------- |
+| POST   | `/auth/register`| Create an account (`name`, `email`, `password`) |
+| POST   | `/auth/login`   | Log in (`email`, `password`) — sets refresh + CSRF cookies |
+| POST   | `/auth/refresh` | Rotate the refresh token (CSRF-protected) |
+| POST   | `/auth/logout`  | Clear the refresh token (CSRF-protected) |
+| GET    | `/auth/me`      | Current user's profile             |
+
+### Accounts
+
+| Method | Endpoint              | Description                    |
+| ------ | --------------------- | ------------------------------ |
+| POST   | `/account/create`     | Open an account (`accountType`: `SAVINGS` \| `CURRENT`) |
+| GET    | `/account`            | List the user's accounts       |
+| GET    | `/account/:accountNumber` | Account details            |
+
+### Transfers
+
+| Method | Endpoint                   | Description                       |
+| ------ | -------------------------- | --------------------------------- |
+| POST   | `/transfer`                | Transfer money (`fromAccountNumber`, `toAccountNumber`, `amount`) — send an `Idempotency-Key` header to make retries safe |
+| GET    | `/transfer/account/:accountId` | Transfers for an account      |
+| GET    | `/transfer/:transferId`    | Transfer details                  |
+
+### Beneficiaries
+
+| Method | Endpoint          | Description                              |
+| ------ | ----------------- | ---------------------------------------- |
+| POST   | `/beneficiary`    | Add one (`accountNumber`, `nickName`)    |
+| GET    | `/beneficiary`    | List beneficiaries                       |
+| DELETE | `/beneficiary/:id`| Remove one                               |
+
+### Notifications
+
+| Method | Endpoint                      | Description            |
+| ------ | ----------------------------- | ---------------------- |
+| GET    | `/notifications`              | List notifications     |
+| GET    | `/notifications/unread-count` | Unread badge count     |
+| PATCH  | `/notifications/:id/read`     | Mark as read           |
+
+### Health (public)
+
+| Method | Endpoint         | Description                                       |
+| ------ | ---------------- | ------------------------------------------------- |
+| GET    | `/health/live`   | Liveness — `200` while the process serves HTTP    |
+| GET    | `/health/ready`  | Readiness — `200` when all dependencies are up, `503` otherwise |
+| GET    | `/health`        | Alias of `/health/ready`                          |
+
+Readiness currently checks Postgres (`select 1`) with a 2 s timeout and reports per-check timing and errors:
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-10-08T13:33:31.118Z",
+  "checks": [{ "name": "postgres", "status": "up", "responseTimeMs": 1 }]
+}
+```
+
+New dependencies plug in through the `HEALTH_CHECKS` factory provider in `src/modules/health/health.module.ts` — no controller changes needed. The probe endpoints are exempt from auth and rate limiting, so orchestrators never see `401`/`429`.
+
+## Real-time notifications
+
+Clients connect with their access token and receive pushed events:
 
 ```ts
-// per-class context
-private readonly logger = new AppLogger(TransferService.name);
-this.logger.log('transfer completed', { transferId, amount });
+import { io } from 'socket.io-client';
 
-// or via injection
-constructor(private readonly logger: AppLogger) {}
-this.logger.child(TransferService.name).warn('retrying');
+const socket = io('http://localhost:3000', {
+  auth: { token: accessToken },
+});
+
+socket.on('notification', (payload) => { /* new notification */ });
+socket.on('notification:read', (payload) => { /* marked as read */ });
 ```
 
-### Health checks
+An invalid or missing token emits `unauthorized` and drops the connection. Transfers automatically generate notifications for both sender and receiver ("Transfer sent" / "Money received").
 
-The app exposes probe endpoints (`src/modules/health/`) for orchestrators,
-load balancers and uptime monitors:
+## Project structure
 
-| Endpoint       | Purpose      | Response                                        |
-| -------------- | ------------ | ----------------------------------------------- |
-| `GET /health/live`  | Liveness     | `200` while the process serves HTTP             |
-| `GET /health/ready` | Readiness    | `200` when every dependency is up, `503` if any check fails |
-| `GET /health`       | Alias        | Same as `/health/ready`                         |
+Modules follow a layered, DDD-inspired layout — each feature owns its own slices:
 
-- The endpoints are public (`@Public()`) and exempt from rate limiting
-  (`@SkipThrottle()`), so probe traffic can never receive `401`/`429`.
-- Readiness runs all registered checks in parallel with a 2 s timeout each
-  and reports per-check timing:
+```
+src/
+├── app.module.ts            # wires modules, global guards
+├── main.ts                  # bootstrap (pipes, filters, cookies)
+├── modules/
+│   ├── identity/            # auth, users, tokens
+│   ├── account/             # accounts & balances
+│   ├── transfer/            # money transfers (idempotent)
+│   ├── beneficiary/         # saved beneficiaries
+│   ├── notification/        # notifications + WebSocket gateway
+│   └── health/              # liveness/readiness probes
+└── shared/
+    ├── domain/              # Money, exceptions, domain events
+    └── infrastructure/      # Drizzle, guards, filters, logging
+```
 
-  ```json
-  {
-    "status": "error",
-    "timestamp": "2026-10-08T12:00:00.000Z",
-    "checks": [
-      { "name": "postgres", "status": "down", "responseTimeMs": 2001, "error": "postgres timed out after 2000ms" }
-    ]
-  }
-  ```
+Every feature module splits the same way: `presentation/` (controllers, DTOs) → `application/` (CQRS commands/queries, ports) → `domain/` (entities, value objects) → `infrastructure/` (repositories, external services).
 
-- Checks are contributed through the `HEALTH_CHECKS` factory provider, so
-  new dependencies (queues, caches, ...) plug into `HealthModule` without
-  touching the controller:
+## Testing
 
-  ```ts
-  {
-    provide: HEALTH_CHECKS,
-    useFactory: (postgres: PostgresHealthCheck, queue: QueueHealthCheck): HealthCheck[] => [postgres, queue],
-    inject: [PostgresHealthCheck, QueueHealthCheck],
-  }
-  ```
+```bash
+pnpm test        # unit tests (45 tests)
+pnpm test:e2e    # end-to-end tests (supertest)
+pnpm test:cov    # coverage report
+```
 
-- The bundled Postgres check issues `select 1` through the shared Drizzle
-  pool. Local infra is equally probeable: `docker-compose.yaml` defines a
-  `pg_isready` healthcheck, so `pnpm infra:up` (which passes `--wait`)
-  blocks until Postgres reports healthy.
+Unit tests cover domain logic, command handlers, event handlers, and the health checks; e2e tests exercise the HTTP surface.
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+## Logging
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+Structured logging is built around `AppLogger` (`src/shared/infrastructure/logging/`):
 
-## Resources
+- **Formats** — colorized text in development, one JSON object per line in production (`LOG_FORMAT`), level via `LOG_LEVEL`.
+- **HTTP logging** — every request logs method, path, status and duration; responses get an `x-request-id` correlation header that is attached to all logs for that request, including SQL queries.
+- **SQL logging** — opt in with `LOG_SQL=true`; slow queries (over `SLOW_QUERY_MS`) always log as warnings.
+- **Sensitive values** (`password`, `token`, `secret`, …) are masked automatically.
+- **Lifecycle** — boot and shutdown are logged; `app.enableShutdownHooks()` handles SIGTERM/SIGINT cleanly.
 
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```ts
+private readonly logger = new AppLogger(TransferService.name);
+this.logger.log('transfer completed', { transferId, amount });
+```
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED
