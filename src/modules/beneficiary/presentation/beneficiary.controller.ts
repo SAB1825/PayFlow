@@ -1,6 +1,15 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from "@nestjs/common";
 import { CommandBus, QueryBus } from "@nestjs/cqrs";
-import { AuthGaurd } from "../../../shared/infrastructure/gaurds/auth.gaurd";
 import { CreateBeneficiaryDto } from "./dtos/create-beneficiary.dto";
 import { CurrentUser } from "../../../shared/infrastructure/decorators/current-user.decorator";
 import { UserDto } from "../../../shared/infrastructure/dto/user.dto";
@@ -11,30 +20,35 @@ import { Beneficiary } from "../domain/entity/beneficiary.entity";
 import { RemoveBeneficiaryCommand } from "../application/use-cases/remove-beneficiary/remove-beneficiary.command";
 
 
-@Controller('beneficiary')
+@Controller('beneficiaries')
 export class BeneficiaryController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus
   ) { }
 
+  /** POST /beneficiaries — 201 with the saved beneficiary (clients need its id). */
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
     @Body() dto: CreateBeneficiaryDto,
     @CurrentUser() user: UserDto
-  ): Promise<void> {
-    await this.commandBus.execute<CreateBeneficiaryCommand, void>(
+  ): Promise<BeneficiaryResponseDto> {
+    const beneficiary = await this.commandBus.execute<
+      CreateBeneficiaryCommand,
+      Beneficiary
+    >(
       new CreateBeneficiaryCommand(
         user.sub,
         dto.accountNumber,
         dto.nickName
       )
-    )
+    );
+
+    return BeneficiaryResponseDto.fromDomain(beneficiary);
   }
 
   @Get()
-  @HttpCode(HttpStatus.OK)
   async listBeneficiaries(
     @CurrentUser() user: UserDto
   ): Promise<BeneficiaryResponseDto[]> {
@@ -46,15 +60,16 @@ export class BeneficiaryController {
     return beneficiaries.map((b) => BeneficiaryResponseDto.fromDomain(b));
   }
 
-  @Delete(":id")
-  @HttpCode(HttpStatus.OK)
+  /** No body to return — 204 says "done, nothing to read". */
+  @Delete(":beneficiaryId")
+  @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @CurrentUser() user: UserDto,
-    @Param("id", new ParseUUIDPipe()) benefciaryId: string,
+    @Param("beneficiaryId", new ParseUUIDPipe()) beneficiaryId: string,
   ): Promise<void> {
     await this.commandBus.execute<RemoveBeneficiaryCommand>(
       new RemoveBeneficiaryCommand(
-        benefciaryId,
+        beneficiaryId,
         user.sub,
       )
     )

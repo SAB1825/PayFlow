@@ -9,7 +9,7 @@ import { ApplicationException, ApplicationExceptionCode } from "../../../../../s
 import { Beneficiary, BeneficiaryStatus } from "../../../domain/entity/beneficiary.entity";
 
 @CommandHandler(CreateBeneficiaryCommand)
-export class CreateBeneficiaryHandler implements ICommandHandler<CreateBeneficiaryCommand, void> {
+export class CreateBeneficiaryHandler implements ICommandHandler<CreateBeneficiaryCommand, Beneficiary> {
   constructor(
     @Inject(ACCOUNT_REPOSITORY)
     private readonly accountRepository: AccountRepositoryPort,
@@ -17,7 +17,7 @@ export class CreateBeneficiaryHandler implements ICommandHandler<CreateBeneficia
     private readonly beneficiaryRepository: BenefciaryPort
   ) { }
 
-  async execute(command: CreateBeneficiaryCommand): Promise<void> {
+  async execute(command: CreateBeneficiaryCommand): Promise<Beneficiary> {
     const ownerId = UserId.fromString(command.userId);
     const accountNumber = AccountNumber.fromString(command.accountNumber);
 
@@ -46,11 +46,13 @@ export class CreateBeneficiaryHandler implements ICommandHandler<CreateBeneficia
       }
       existing.activate();
       await this.beneficiaryRepository.save(existing);
-      return;
+      return existing;
     }
 
     const beneficiary = Beneficiary.create(ownerId, accountNumber, command.nickName);
 
     await this.beneficiaryRepository.save(beneficiary);
+
+    return beneficiary;
   }
 }

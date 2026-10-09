@@ -4,7 +4,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Inject,
   Post,
   Req,
   Res,
@@ -40,10 +39,12 @@ export class UserController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() dto: RegisterUserDto): Promise<void> {
-    await this.commandBus.execute<RegisterUserCommand, void>(
+  async register(@Body() dto: RegisterUserDto): Promise<UserResponseDto> {
+    const user = await this.commandBus.execute<RegisterUserCommand, User>(
       new RegisterUserCommand(dto.name, dto.email, dto.password),
     );
+
+    return UserResponseDto.fromDomain(user);
   }
 
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
@@ -82,6 +83,7 @@ export class UserController {
 
   @Public()
   @Post('refresh')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(CsrfGaurd)
   async refreshToken(
     @Body() dto: RefreshTokenDto,
@@ -124,7 +126,7 @@ export class UserController {
 
   @Post('logout')
   @UseGuards(CsrfGaurd)
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async logount(
     @CurrentUser() user: UserDto,
     @Req() req: Request,

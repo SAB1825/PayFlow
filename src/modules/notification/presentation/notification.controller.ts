@@ -14,10 +14,9 @@ export class NotificationController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
-  ) { }
+  ) {}
 
   @Get()
-  @HttpCode(HttpStatus.OK)
   async list(@CurrentUser() user: UserDto): Promise<NotificationResponseDto[]> {
     const notifications = await this.queryBus.execute<ListNotificationsQuery, Notification[]>(
       new ListNotificationsQuery(user.sub),
@@ -29,7 +28,6 @@ export class NotificationController {
   }
 
   @Get('unread-count')
-  @HttpCode(HttpStatus.OK)
   async unreadCount(@CurrentUser() user: UserDto): Promise<{ unread: number }> {
     const unread = await this.queryBus.execute<UnreadCountQuery, number>(
       new UnreadCountQuery(user.sub),
@@ -38,11 +36,11 @@ export class NotificationController {
     return { unread };
   }
 
-  @Patch(':id/read')
-  @HttpCode(HttpStatus.OK)
+  @Patch(':notificationId/read')
+  @HttpCode(HttpStatus.NO_CONTENT)
   async markRead(
     @CurrentUser() user: UserDto,
-    @Param('id', new ParseUUIDPipe()) notificationId: string,
+    @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
   ): Promise<void> {
     await this.commandBus.execute<MarkNotificationReadCommand, void>(
       new MarkNotificationReadCommand(notificationId, user.sub),

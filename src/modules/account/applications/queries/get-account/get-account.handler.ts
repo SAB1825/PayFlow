@@ -12,7 +12,6 @@ import {
   ApplicationException,
   ApplicationExceptionCode,
 } from '../../../../../shared/domain/exception/application.exception';
-import { AccountNumber } from '../../../domain/value-objects/account-number.vo';
 
 @QueryHandler(GetAccountQuery)
 export class GetAccountHandler implements IQueryHandler<
@@ -26,11 +25,14 @@ export class GetAccountHandler implements IQueryHandler<
 
   async execute(query: GetAccountQuery): Promise<Account> {
     const userId = UserId.fromString(query.userId);
-    const accNumber = AccountNumber.fromString(query.accountNumber);
-    const account = await this.accountRepository.findByNumber(accNumber);
+    const accountId = AccountId.fromString(query.accountId);
+    const account = await this.accountRepository.findById(accountId);
 
     if (!account)
-      throw new ApplicationException("Account doesn't for the given id");
+      throw new ApplicationException(
+        "Account doesn't exist for the given id",
+        ApplicationExceptionCode.NOT_FOUND,
+      );
 
     const isValid = userId.equals(account.userId);
     if (!isValid)

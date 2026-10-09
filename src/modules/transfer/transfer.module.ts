@@ -3,6 +3,7 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { DrizzleModule } from '../../shared/infrastructure/database/drizzle.module';
 import { AccountModule } from '../account/account.module';
 import { TransferController } from './presentation/transfer.controller';
+import { AccountTransfersController } from './presentation/account-transfers.controller';
 import { CommandHandlers } from './applications/use-cases';
 import { TRANSFER_REPOSITORY } from './applications/ports/transfer.repository.port';
 import { TransferRepository } from './infrastructure/transfer.repository';
@@ -10,7 +11,7 @@ import { QueryHandlers } from './applications/queries';
 
 @Module({
   imports: [CqrsModule, DrizzleModule, AccountModule],
-  controllers: [TransferController],
+  controllers: [TransferController, AccountTransfersController],
   providers: [
     ...CommandHandlers,
     ...QueryHandlers,

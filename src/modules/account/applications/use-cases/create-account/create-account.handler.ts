@@ -19,7 +19,7 @@ import { Account } from '../../../domain/entities/account.entity';
 @CommandHandler(CreateAccountCommand)
 export class CreateAccountHandler implements ICommandHandler<
   CreateAccountCommand,
-  void
+  Account
 > {
   constructor(
     @Inject(USER_REPOSITORY)
@@ -28,7 +28,7 @@ export class CreateAccountHandler implements ICommandHandler<
     private readonly accountRepository: AccountRepositoryPort,
   ) {}
 
-  async execute(command: CreateAccountCommand): Promise<void> {
+  async execute(command: CreateAccountCommand): Promise<Account> {
     const userId = UserId.fromString(command.userId);
     const existingUser = await this.userRepository.findById(userId);
 
@@ -52,5 +52,7 @@ export class CreateAccountHandler implements ICommandHandler<
     const account = Account.create(userId, command.accountType, 'INR');
 
     await this.accountRepository.create(account);
+
+    return account;
   }
 }

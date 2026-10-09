@@ -19,7 +19,7 @@ import {
 @CommandHandler(RegisterUserCommand)
 export class RegisterUserHandler implements ICommandHandler<
   RegisterUserCommand,
-  void
+  User
 > {
   constructor(
     @Inject(PASSWORD_HASHER) private readonly passwordHasher: PasswordHasher,
@@ -27,7 +27,7 @@ export class RegisterUserHandler implements ICommandHandler<
     private readonly userRepository: UserRepositoryPort,
   ) {}
 
-  async execute(command: RegisterUserCommand): Promise<void> {
+  async execute(command: RegisterUserCommand): Promise<User> {
     const email = new Email(command.email);
     const existingEmail = await this.userRepository.findByEmail(email);
 
@@ -43,5 +43,7 @@ export class RegisterUserHandler implements ICommandHandler<
     const user = User.register(command.name, email, passwordHash);
 
     await this.userRepository.register(user);
+
+    return user;
   }
 }

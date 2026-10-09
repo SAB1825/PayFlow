@@ -97,51 +97,53 @@ The API is available at `http://localhost:3000`.
 
 ## API
 
-Base URL: `http://localhost:3000`
+Base URL: `http://localhost:3000/api/v1`
 
-All endpoints require `Authorization: Bearer <access_token>` except the ones marked **public**.
+Every business route lives behind the versioned `/api/v1` prefix and requires `Authorization: Bearer <access_token>` except the ones marked **public**. Health probes are deliberately **not** versioned — they stay at `/health/*` so orchestrator and load balancer configs never change.
+
+Status codes: creates answer `201` with the created resource (plus a `Location` header on accounts and transfers), reads answer `200`, and mutations with no body (`DELETE /beneficiaries/:beneficiaryId`, `PATCH /notifications/:notificationId/read`, `POST /auth/logout`) answer `204`. Paths below are relative to the base URL.
 
 ### Auth (public)
 
 | Method | Endpoint        | Description                        |
 | ------ | --------------- | ---------------------------------- |
-| POST   | `/auth/register`| Create an account (`name`, `email`, `password`) |
-| POST   | `/auth/login`   | Log in (`email`, `password`) — sets refresh + CSRF cookies |
-| POST   | `/auth/refresh` | Rotate the refresh token (CSRF-protected) |
-| POST   | `/auth/logout`  | Clear the refresh token (CSRF-protected) |
+| POST   | `/auth/register`| Register a user (`name`, `email`, `password`) → `201` + user |
+| POST   | `/auth/login`   | Log in (`email`, `password`) → `200` — sets refresh + CSRF cookies |
+| POST   | `/auth/refresh` | Rotate the refresh token → `200` (CSRF-protected) |
+| POST   | `/auth/logout`  | Clear the refresh token → `204` (CSRF-protected) |
 | GET    | `/auth/me`      | Current user's profile             |
 
 ### Accounts
 
 | Method | Endpoint              | Description                    |
 | ------ | --------------------- | ------------------------------ |
-| POST   | `/account/create`     | Open an account (`accountType`: `SAVINGS` \| `CURRENT`) |
-| GET    | `/account`            | List the user's accounts       |
-| GET    | `/account/:accountNumber` | Account details            |
+| POST   | `/accounts`           | Open an account (`accountType`: `SAVINGS` \| `CURRENT`) → `201` + account |
+| GET    | `/accounts`           | List the user's accounts       |
+| GET    | `/accounts/:accountId`| Account details (UUID)         |
 
 ### Transfers
 
-| Method | Endpoint                   | Description                       |
-| ------ | -------------------------- | --------------------------------- |
-| POST   | `/transfer`                | Transfer money (`fromAccountNumber`, `toAccountNumber`, `amount`) — send an `Idempotency-Key` header to make retries safe |
-| GET    | `/transfer/account/:accountId` | Transfers for an account      |
-| GET    | `/transfer/:transferId`    | Transfer details                  |
+| Method | Endpoint                        | Description                       |
+| ------ | ------------------------------- | --------------------------------- |
+| POST   | `/transfers`                    | Transfer money (`fromAccountNumber`, `toAccountNumber`, `amount`) → `201` + transfer — send an `Idempotency-Key` header to make retries safe |
+| GET    | `/accounts/:accountId/transfers`| Transfers for an account          |
+| GET    | `/transfers/:transferId`        | Transfer details                  |
 
 ### Beneficiaries
 
-| Method | Endpoint          | Description                              |
-| ------ | ----------------- | ---------------------------------------- |
-| POST   | `/beneficiary`    | Add one (`accountNumber`, `nickName`)    |
-| GET    | `/beneficiary`    | List beneficiaries                       |
-| DELETE | `/beneficiary/:id`| Remove one                               |
+| Method | Endpoint                  | Description                              |
+| ------ | ------------------------- | ---------------------------------------- |
+| POST   | `/beneficiaries`          | Add one (`accountNumber`, `nickName`) → `201` + beneficiary |
+| GET    | `/beneficiaries`          | List beneficiaries                       |
+| DELETE | `/beneficiaries/:beneficiaryId` | Remove one → `204`                  |
 
 ### Notifications
 
-| Method | Endpoint                      | Description            |
-| ------ | ----------------------------- | ---------------------- |
-| GET    | `/notifications`              | List notifications     |
-| GET    | `/notifications/unread-count` | Unread badge count     |
-| PATCH  | `/notifications/:id/read`     | Mark as read           |
+| Method | Endpoint                              | Description            |
+| ------ | ------------------------------------- | ---------------------- |
+| GET    | `/notifications`                      | List notifications     |
+| GET    | `/notifications/unread-count`         | Unread badge count     |
+| PATCH  | `/notifications/:notificationId/read` | Mark as read → `204`   |
 
 ### Health (public)
 
@@ -150,6 +152,8 @@ All endpoints require `Authorization: Bearer <access_token>` except the ones mar
 | GET    | `/health/live`   | Liveness — `200` while the process serves HTTP    |
 | GET    | `/health/ready`  | Readiness — `200` when all dependencies are up, `503` otherwise |
 | GET    | `/health`        | Alias of `/health/ready`                          |
+
+These three are served at the root (`http://localhost:3000/health/...`), not behind `/api/v1`.
 
 Readiness currently checks Postgres (`select 1`) with a 2 s timeout and reports per-check timing and errors:
 
