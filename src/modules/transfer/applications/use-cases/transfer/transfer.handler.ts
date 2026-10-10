@@ -4,7 +4,10 @@ import {
   ICommandHandler,
 } from '@nestjs/cqrs';
 import { TransferCommand } from './transfer.command';
-import { Transfer } from '../../../domain/entities/transfer.entity';
+import {
+  Transfer,
+  TransferStatus,
+} from '../../../domain/entities/transfer.entity';
 import { Inject } from '@nestjs/common';
 import {
   ACCOUNT_REPOSITORY,
@@ -70,6 +73,8 @@ export class TransferCommandHandler implements ICommandHandler<
 
     if (!isValidAmount) throw new ApplicationException('Low Balance');
 
+    // Constructing the aggregate validates the idempotency key, the amount and
+    // the from/to pair before we touch any state.
     const transfer = Transfer.start(
       initiatedBy,
       fromAcc.id,
@@ -78,23 +83,20 @@ export class TransferCommandHandler implements ICommandHandler<
       command.idempotencyKey,
     );
 
-    try {
-      await this.transferRepo.create(transfer);
-    } catch (err) {
-      if (
-        err instanceof ApplicationException &&
-        err.code === ApplicationExceptionCode.CONFLICT
-      ) {
-        const original = await this.transferRepo.findByIdempotencyKey(
-          command.idempotencyKey,
-        );
-        if (original) return this.returnIfOwner(original, initiatedBy);
-      }
-      throw err;
-    }
+    // Fast path: a previous request with this key already reached a terminal
+    // state, so return that outcome without moving money again.
+    const replay = await this.transferRepo.findByIdempotencyKey(
+      command.idempotencyKey,
+    );
+    if (replay) return this.returnIfOwner(replay, initiatedBy);
 
     try {
-      await this.unitOfWork.runInTransaction(async (tx) => {
+      // Locking both accounts, moving the money and persisting the transfer all
+      // happen in a single transaction. The row is therefore only ever
+      // committed as SUCCESS and can never be left stranded in PENDING: if the
+      // process dies or the transaction rolls back, no row exists at all and a
+      // retry with the same idempotency key can run cleanly.
+      const completed = await this.unitOfWork.runInTransaction(async (tx) => {
         const locked = await this.accountRepo.lockForUpdate(
           [fromAcc.id, toAcc.id],
           tx,
@@ -115,20 +117,57 @@ export class TransferCommandHandler implements ICommandHandler<
 
         await this.accountRepo.updateBalance(from, tx);
         await this.accountRepo.updateBalance(to, tx);
+
+        transfer.markSuccess();
+        return this.transferRepo.create(transfer, tx);
       });
-    } catch (err) {
-      // Transaction rolled back: balances untouched. Record the failure.
-      transfer.markFailed(err instanceof Error ? err.message : 'Unknown error');
-      await this.transferRepo.updateStatus(transfer);
+
+      // Events are only announced after the transaction committed, so
+      // consumers never see an event for a transfer the DB rolled back.
       this.publishDomainEvents(transfer);
+
+      return completed;
+    } catch (err) {
+      if (isIdempotencyConflict(err)) {
+        // A concurrent request with the same key won the race. Its committed
+        // outcome is authoritative; our attempt was rolled back.
+        const original = await this.transferRepo.findByIdempotencyKey(
+          command.idempotencyKey,
+        );
+        if (original) return this.returnIfOwner(original, initiatedBy);
+        throw err;
+      }
+
+      // Record the failed attempt so it is queryable and replayable. This is
+      // only safe while the aggregate is still PENDING: if markSuccess already
+      // ran, the commit outcome is ambiguous and writing a row would be wrong.
+      if (transfer.status === TransferStatus.Pending) {
+        await this.recordFailure(transfer, err);
+      }
       throw err;
     }
+  }
 
-    transfer.markSuccess();
-    const completed = await this.transferRepo.updateStatus(transfer);
+  /**
+   * The transaction has already rolled back, so balances are untouched. We
+   * persist the FAILED transfer in its own transaction (best effort) so a
+   * crash mid-way cannot strand a PENDING row.
+   */
+  private async recordFailure(transfer: Transfer, error: unknown): Promise<void> {
+    transfer.markFailed(
+      error instanceof Error ? error.message : 'Unknown error',
+    );
+
+    try {
+      await this.transferRepo.create(transfer);
+    } catch (persistError) {
+      // A concurrent attempt may already own the idempotency key; its result is
+      // authoritative. Any other bookkeeping error must not replace the real
+      // transfer failure reported to the caller.
+      if (isIdempotencyConflict(persistError)) return;
+    }
+
     this.publishDomainEvents(transfer);
-
-    return completed;
   }
 
   /**
@@ -150,6 +189,24 @@ export class TransferCommandHandler implements ICommandHandler<
         ApplicationExceptionCode.CONFLICT,
       );
     }
+
+    // Only a terminal transfer is a valid idempotent response. A PENDING row
+    // means an earlier attempt never finished; returning it as if it were the
+    // completed result would report a transfer that will never settle.
+    if (transfer.status === TransferStatus.Pending) {
+      throw new ApplicationException(
+        'A transfer with this idempotency key is still being processed',
+        ApplicationExceptionCode.CONFLICT,
+      );
+    }
+
     return transfer;
   }
+}
+
+function isIdempotencyConflict(error: unknown): boolean {
+  return (
+    error instanceof ApplicationException &&
+    error.code === ApplicationExceptionCode.CONFLICT
+  );
 }

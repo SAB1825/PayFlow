@@ -19,15 +19,20 @@ import {
   ApplicationExceptionCode,
 } from '../../../shared/domain/exception/application.exception';
 import { isUniqueViolation } from '../../../shared/infrastructure/database/errors/unique-violation.error';
+import { TransactionHandle } from '../../../shared/application/unit-of-work.port';
 import { desc, eq, or } from 'drizzle-orm';
 
 @Injectable()
 export class TransferRepository implements TransferRepositoryPort {
   constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) { }
 
-  async create(transfer: Transfer): Promise<Transfer> {
+  async create(transfer: Transfer, tx?: TransactionHandle): Promise<Transfer> {
+    // The transfer is persisted inside the same transaction that moves the
+    // money, so callers pass the active handle to keep the insert atomic.
+    const executer = (tx as unknown as DrizzleDatabase) ?? this.db;
+
     try {
-      const [row] = await this.db
+      const [row] = await executer
         .insert(transfers)
         .values(TransferRepository.toPersistance(transfer))
         .returning();
