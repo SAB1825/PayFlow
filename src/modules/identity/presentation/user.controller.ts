@@ -87,11 +87,20 @@ export class UserController {
   @UseGuards(CsrfGaurd)
   async refreshToken(
     @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{
     user: UserResponseDto;
     accessToken: string;
   }> {
+    const rawToken = dto.refreshToken ?? req.cookies?.['refresh_token'];
+    if (!rawToken) {
+      throw new ApplicationException(
+        'Refresh token not found',
+        ApplicationExceptionCode.UNAUTHORIZED,
+      );
+    }
+
     const result = await this.commandBus.execute<
       RefreshTokenCommand,
       {
@@ -99,8 +108,7 @@ export class UserController {
         accessToken: string;
         refreshToken: string;
       }
-    >(new RefreshTokenCommand(dto.refreshToken));
-
+    >(new RefreshTokenCommand(rawToken));
     res.cookie('refresh_token', result.refreshToken, {
       httpOnly: true,
       secure: true,
@@ -140,7 +148,7 @@ export class UserController {
         user.sub
       )
     )
-    res.clearCookie('refresh_token', { httpOnly: true, secure: true, sameSite: 'lax' })
+    res.clearCookie('refresh_token', { httpOnly: true, secure: true, sameSite: 'strict' })
   }
 
 

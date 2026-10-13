@@ -11,7 +11,6 @@ import { UserId } from "../../identity/domain/value-object/user-id.vo";
 import { AccountNumber } from "../../account/domain/value-objects/account-number.vo";
 import { BeneficiaryId } from "../domain/value-objects/beneficiary-id.vo";
 import { and, eq } from "drizzle-orm";
-import { ApplicationException, ApplicationExceptionCode } from "../../../shared/domain/exception/application.exception";
 
 
 @Injectable()
@@ -27,7 +26,18 @@ export class BeneficiaryRepository implements BenefciaryPort {
     )
 
     if (existing) {
-      throw new ApplicationException("Have an existing beneficiary for this account number.", ApplicationExceptionCode.CONFLICT)
+      // Re-activating a previously removed beneficiary must update the
+      // existing row rather than insert a duplicate (or throw a conflict).
+      await this.db
+        .update(beneficiaries)
+        .set({
+          nickName: beneficiary.nickname,
+          status: BeneficiaryRepository.toPersistenceStatus(beneficiary.status),
+          updatedAt: beneficiary.updatedAt,
+        })
+        .where(eq(beneficiaries.id, existing.id.getValue()));
+
+      return;
     }
 
     await this.db

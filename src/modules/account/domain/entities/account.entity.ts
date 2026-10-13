@@ -80,6 +80,10 @@ export class Account extends AggregateRoot {
   }
 
   withdraw(amount: Money): void {
+    if (this._status !== AccountStatus.Active) {
+      throw new DomainException('Account is not active');
+    }
+
     if (this._balance.currency !== amount.currency) {
       throw new DomainException('Currency mismatch');
     }
@@ -93,6 +97,10 @@ export class Account extends AggregateRoot {
   }
 
   deposit(amount: Money): void {
+    if (this._status !== AccountStatus.Active) {
+      throw new DomainException('Account is not active');
+    }
+
     if (this._balance.currency !== amount.currency) {
       throw new DomainException('Currency mismatch');
     }

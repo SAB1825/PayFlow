@@ -16,7 +16,7 @@ describe('Notification aggregate domain events', () => {
     const events = notification.pullDomainEvents();
     expect(events).toHaveLength(1);
     expect(events[0]).toBeInstanceOf(NotificationCreatedEvent);
-    expect(events[0].notification).toBe(notification);
+    expect((events[0] as NotificationCreatedEvent).notification).toBe(notification);
     expect((events[0] as any).occurredAt).toBeInstanceOf(Date);
   });
 
